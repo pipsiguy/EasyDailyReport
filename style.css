@@ -219,6 +219,33 @@ table {
   font-size: 0.88rem;
 }
 
+/* Align first & last columns across Sales, COH-before, Invoices, Expenses */
+#sales-table th:first-child,
+#sales-table td:first-child,
+#coh-before-table th:first-child,
+#coh-before-table td:first-child,
+#invoices-table th:first-child,
+#invoices-table td:first-child,
+#expenses-table th:first-child,
+#expenses-table td:first-child {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+}
+
+#sales-table th:last-child,
+#sales-table td:last-child,
+#coh-before-table th:last-child,
+#coh-before-table td:last-child,
+#invoices-table th:last-child,
+#invoices-table td:last-child,
+#expenses-table th:last-child,
+#expenses-table td:last-child {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+}
+
 thead th {
   text-align: center;
   color: var(--muted);
