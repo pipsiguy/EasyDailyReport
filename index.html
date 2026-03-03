@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="google" content="notranslate" />
-  <title>Mufu – Weekly Sales Report</title>
+  <title>Easy Daily Report</title>
+  <link rel="icon" type="image/png" href="images/logo.png" />
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
@@ -34,7 +35,7 @@
         <i data-lucide="pencil" style="width:14px;height:14px;"></i>
       </button>
     </div>
-    <p data-i18n="subtitle">Weekly Sales &amp; Hours Log</p>
+    <p data-i18n="subtitle">Easy Daily Report</p>
   </div>
   <div class="lang-bar" translate="no">
     <button class="lang-btn active" data-lang="en">EN</button>
@@ -49,30 +50,7 @@
   <input type="date" id="week-start" />
 </div>
 
-<!-- ══════════════════════════════════════════
-     Cash on Hand
-══════════════════════════════════════════ -->
-<div class="card cash-on-hand-card" id="cash-on-hand-card">
-  <div class="card-title">
-    <i data-lucide="banknote" style="width:14px;height:14px;"></i>
-    <span data-i18n="cashOnHand">Cash on Hand</span>
-  </div>
-  <div class="coh-row">
-    <label class="coh-label" data-i18n="startingCash">Starting Cash</label>
-    <div class="coh-input-wrap">
-      <span class="coh-dollar">$</span>
-      <input class="inp coh-inp" type="number" inputmode="decimal" min="0" step="0.01"
-        placeholder="0.00"
-        data-key="coh_start"
-        id="coh-start" />
-    </div>
-    <button class="btn-auto-fill" id="btn-auto-fill-coh" title="Auto-fill from previous week">
-      <i data-lucide="wand-2" style="width:14px;height:14px;"></i>
-      <span data-i18n="autoFill">Auto-fill</span>
-    </button>
-  </div>
-  <div class="coh-hint" id="coh-hint" data-i18n="cohHint">Tip: Use auto-fill to pull from the most recent previous week, or enter manually.</div>
-</div>
+<!-- Cash on Hand card removed – COH is now inline inside sales & expenses tables -->
 
 <!-- ══════════════════════════════════════════
      Action Buttons
@@ -128,6 +106,41 @@
 </div>
 
 <!-- ══════════════════════════════════════════
+     Cash on Hand before calculation
+══════════════════════════════════════════ -->
+<div class="card" id="coh-before-card">
+  <div class="card-title">
+    <i data-lucide="banknote" style="width:14px;height:14px;"></i>
+    <span data-i18n="cohBeforeCalc">Cash on Hand before calculation</span>
+  </div>
+  <div class="coh-row">
+    <label class="coh-label" data-i18n="startingCash">Starting Cash</label>
+    <div class="coh-input-wrap">
+      <span class="coh-dollar">$</span>
+      <input class="inp coh-inp" type="number" inputmode="decimal" min="0" step="0.01"
+        placeholder="0.00"
+        data-key="coh_start"
+        id="coh-start" />
+    </div>
+    <button class="btn-auto-fill" id="btn-auto-fill-coh" title="Auto-fill from previous week">
+      <i data-lucide="wand-2" style="width:14px;height:14px;"></i>
+      <span data-i18n="autoFill">Auto-fill</span>
+    </button>
+  </div>
+  <div class="table-wrap">
+    <table id="coh-before-table">
+      <thead>
+        <tr id="coh-before-head-row">
+          <th></th>
+          <!-- day columns injected by JS -->
+        </tr>
+      </thead>
+      <tbody id="coh-before-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
      Invoices Card
 ══════════════════════════════════════════ -->
 <div class="card" id="invoices-card">
@@ -171,7 +184,7 @@
 <div class="card" id="expenses-card">
   <div class="card-title">
     <i data-lucide="wallet" style="width:14px;height:14px;"></i>
-    <span data-i18n="Cash Expenses">Cash Expenses</span>
+    <span data-i18n="cashExpenses">Cash Expenses</span>
   </div>
   <div class="table-wrap">
     <table id="expenses-table">
@@ -194,11 +207,11 @@
   <div class="emp-actions" id="expense-actions">
     <button class="btn-emp btn-emp-add" id="btn-add-expense">
       <i data-lucide="plus" style="width:15px;height:15px;"></i>
-      <span data-i18n="Add Expense">Add Expense</span>
+      <span data-i18n="addExpense">Add Expense</span>
     </button>
     <button class="btn-emp btn-emp-del-toggle" id="btn-del-expense-mode">
       <i data-lucide="minus" style="width:15px;height:15px;"></i>
-      <span data-i18n="Delete Expenses">Delete Expenses</span>
+      <span data-i18n="deleteExpenses">Delete Expenses</span>
     </button>
   </div>
 </div>

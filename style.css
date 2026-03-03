@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════
-   Mufu – style.css
+   EasyDailyReport – style.css
    Light-mode restaurant sales reporting theme
 ══════════════════════════════════════════ */
 
@@ -178,6 +178,18 @@ body {
   color: var(--muted);
   margin-top: 8px;
   font-style: italic;
+}
+
+/* ── COH rows inside tables ── */
+.coh-before-row td,
+.coh-after-row td {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.coh-before-row .row-label,
+.coh-after-row .row-label {
+  white-space: nowrap;
 }
 
 .card-title {
