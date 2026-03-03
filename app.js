@@ -1544,7 +1544,7 @@ function buildScreenshotClone(qrText) {
   // Remove auto-fill button from clone (no longer in sales table, but just in case)
   salesClone.querySelectorAll('.btn-auto-fill-inline, .btn-auto-fill-sm').forEach(btn => btn.remove());
 
-  // Clone Cash on Hand before calculation — single clean row
+  // Cash on Hand before calculation — single clean text row
   const cohStartEl = document.getElementById('coh-start');
   const cohStartVal = cohStartEl ? (parseFloat(cohStartEl.value) || 0) : 0;
 
@@ -1556,25 +1556,22 @@ function buildScreenshotClone(qrText) {
   cohTitle.textContent = I18N.en.cohBeforeCalc;
   cohSection.appendChild(cohTitle);
 
-  // Build a single inline row: Starting Cash + day values
+  // Build a single clean row: Starting Cash + day values
   const cohRow = document.createElement('div');
-  cohRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
+  cohRow.style.cssText = 'font-size:13px;color:#1e1e2f;padding:8px 12px;background:#eef0f4;border-radius:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;';
 
-  // Starting cash badge
-  const cohBadge = document.createElement('span');
-  cohBadge.style.cssText = 'font-size:12px;color:#1e1e2f;padding:5px 10px;background:#eef0f4;border-radius:8px;font-weight:600;';
-  cohBadge.textContent = `${I18N.en.startingCash}: $${cohStartVal.toFixed(2)}`;
-  cohRow.appendChild(cohBadge);
+  const startText = document.createElement('span');
+  startText.style.cssText = 'font-weight:700;';
+  startText.textContent = `${I18N.en.startingCash}: $${cohStartVal.toFixed(2)}`;
+  cohRow.appendChild(startText);
 
-  // Day values from the live COH-before cells
   const enDaysSnap = I18N.en.daysShort;
   for (let i = 0; i < 7; i++) {
     const cell = document.getElementById(`coh-before-${i}`);
     const val = cell ? cell.textContent : '$0.00';
-    const dayBadge = document.createElement('span');
-    dayBadge.style.cssText = 'font-size:12px;color:#1e1e2f;padding:5px 10px;background:#eef0f4;border-radius:8px;text-align:center;';
-    dayBadge.innerHTML = `<span style="font-size:10px;color:#6b7194;display:block;">${enDaysSnap[i]}</span><span style="font-weight:700;">${val}</span>`;
-    cohRow.appendChild(dayBadge);
+    const dayText = document.createElement('span');
+    dayText.innerHTML = `<span style="color:#6b7194;">${enDaysSnap[i]}:</span> <strong>${val}</strong>`;
+    cohRow.appendChild(dayText);
   }
 
   cohSection.appendChild(cohRow);
@@ -1624,52 +1621,26 @@ function buildScreenshotClone(qrText) {
     wrap.appendChild(invClone);
   }
 
-  // Clone cash expenses table (if expenses exist) — English title
-  if (cashExpenses.length > 0) {
-    const expTitle = document.createElement('div');
-    expTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
-    expTitle.textContent = tEn('cashExpenses');
-    wrap.appendChild(expTitle);
+  // Clone cash expenses table — always show (even when no expense items)
+  const expTitle = document.createElement('div');
+  expTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
+  expTitle.textContent = tEn('cashExpenses');
+  wrap.appendChild(expTitle);
 
-    const expClone = document.getElementById('expenses-table').cloneNode(true);
-    forceEnglishClone(expClone);
-    styleCloneTable(expClone);
-    expClone.querySelectorAll('input').forEach(inp => {
-      const span = document.createElement('span');
-      const v = parseFloat(inp.value);
-      span.textContent = isNaN(v) ? '–' : '$' + v.toFixed(2);
-      span.style.cssText = 'display:block;text-align:right;font-size:13px;padding:4px;color:#1e1e2f;';
-      inp.parentNode.replaceChild(span, inp);
-    });
-    expClone.querySelectorAll('.emp-check-cell').forEach(el => el.remove());
-    // Force english on COH after row label
-    const cohAfterLabel = expClone.querySelector('.coh-after-row .row-label');
-    if (cohAfterLabel) cohAfterLabel.textContent = I18N.en.cashOnHand;
-    wrap.appendChild(expClone);
-  }
-
-  // Always show Cash on Hand row in snapshot (even without expenses)
-  {
-    const cohAfterTitle = document.createElement('div');
-    cohAfterTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
-    cohAfterTitle.textContent = I18N.en.cashOnHand;
-    wrap.appendChild(cohAfterTitle);
-
-    const cohAfterRow = document.createElement('div');
-    cohAfterRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
-
-    const enDaysCoh = I18N.en.daysShort;
-    for (let i = 0; i < 7; i++) {
-      const cell = document.getElementById(`coh-after-${i}`);
-      const val = cell ? cell.textContent : '$0.00';
-      const dayBadge = document.createElement('span');
-      dayBadge.style.cssText = 'font-size:12px;color:#1e1e2f;padding:5px 10px;background:#eef0f4;border-radius:8px;text-align:center;';
-      dayBadge.innerHTML = `<span style="font-size:10px;color:#6b7194;display:block;">${enDaysCoh[i]}</span><span style="font-weight:700;">${val}</span>`;
-      cohAfterRow.appendChild(dayBadge);
-    }
-
-    wrap.appendChild(cohAfterRow);
-  }
+  const expClone = document.getElementById('expenses-table').cloneNode(true);
+  forceEnglishClone(expClone);
+  styleCloneTable(expClone);
+  expClone.querySelectorAll('input').forEach(inp => {
+    const span = document.createElement('span');
+    const v = parseFloat(inp.value);
+    span.textContent = isNaN(v) ? '$0.00' : '$' + v.toFixed(2);
+    span.style.cssText = 'display:block;text-align:right;font-size:13px;padding:4px;color:#1e1e2f;';
+    inp.parentNode.replaceChild(span, inp);
+  });
+  expClone.querySelectorAll('.emp-check-cell').forEach(el => el.remove());
+  const cohAfterLabel = expClone.querySelector('.coh-after-row .row-label');
+  if (cohAfterLabel) cohAfterLabel.textContent = I18N.en.cashOnHand;
+  wrap.appendChild(expClone);
 
   // Notes section (if any)
   const notesEl = document.getElementById('week-notes');
