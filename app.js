@@ -548,16 +548,18 @@ function buildCohBeforeTable() {
     th.textContent = t('daysShort')[i];
     headRow.appendChild(th);
   });
+  headRow.innerHTML += `<th data-i18n="totals">${t('totals')}</th>`;
 
   // Single row — all 7 days are read-only display cells
   const tbody = document.getElementById('coh-before-body');
   tbody.innerHTML = '';
   const tr = document.createElement('tr');
   tr.className = 'coh-before-row';
-  let row = `<td class="row-label" data-i18n="cohBeforeCalc">${t('cohBeforeCalc')}</td>`;
+  let row = `<td class="row-label coh-before-empty"></td>`;
   DAYS().forEach((_, i) => {
     row += `<td class="tot-cell" id="coh-before-${i}">$0.00</td>`;
   });
+  row += '<td></td>';
   tr.innerHTML = row;
   tbody.appendChild(tr);
 }
@@ -1563,7 +1565,7 @@ function buildScreenshotClone(qrText) {
   forceEnglishClone(cohClone);
   styleCloneTable(cohClone);
   const cohLabel = cohClone.querySelector('.coh-before-row .row-label');
-  if (cohLabel) cohLabel.textContent = I18N.en.cohBeforeCalc;
+  if (cohLabel) cohLabel.textContent = '';
   wrap.appendChild(cohClone);
 
   // Clone hours table — English title
