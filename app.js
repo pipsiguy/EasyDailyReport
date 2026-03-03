@@ -318,6 +318,7 @@ function loadWeekData(dateStr) {
 function saveCurrentWeek() {
   const ws = document.getElementById('week-start').value;
   if (!ws) return;
+
   const s = {};
   document.querySelectorAll('[data-key]').forEach(el => {
     if (el.value && el.value !== '0') s[el.dataset.key] = el.value;
@@ -332,7 +333,7 @@ function saveCurrentWeek() {
     localStorage.setItem(weekKey(ws), JSON.stringify(s));
     enforceWeekLimit();
   }
-  saveMeta({ lang: currentLang, lastWeek: ws, employees: employees.slice(), vendors: vendors.slice(), cashExpenses: cashExpenses.slice() });
+  saveMeta({ lang: currentLang, lastWeek: ws, employees: employees.slice(), vendors: vendors.slice() });
 }
 
 function loadState() {
@@ -363,8 +364,12 @@ function saveState() {
 
 function clearForm() {
   document.querySelectorAll('[data-key]').forEach(el => { el.value = ''; });
+  const cohEl = document.getElementById('coh-start');
+  if (cohEl) cohEl.value = '0.00';
   updateSalesTotals();
   updateHoursTotals();
+  updateInvoicesTotals();
+  updateExpensesTotals();
   updateCashOnHand();
 }
 
@@ -380,11 +385,8 @@ function applyState(s) {
     saveMeta({ vendors: vendors.slice() });
     buildInvoicesTable();
   }
-  if (s['__cashExpenses'] && Array.isArray(s['__cashExpenses'])) {
-    cashExpenses = s['__cashExpenses'];
-    saveMeta({ cashExpenses: cashExpenses.slice() });
-    buildExpensesTable();
-  }
+  cashExpenses = Array.isArray(s['__cashExpenses']) ? s['__cashExpenses'] : [];
+  buildExpensesTable();
   clearForm();
   Object.entries(s).forEach(([k, v]) => {
     const el = qsel(k);
@@ -393,6 +395,7 @@ function applyState(s) {
   if (s['__weekStart']) {
     document.getElementById('week-start').value = s['__weekStart'];
   }
+
   updateDateLabels();
   updateSalesTotals();
   updateHoursTotals();
@@ -412,9 +415,10 @@ function switchToWeek(dateStr) {
   } else {
     // New blank week
     document.getElementById('week-start').value = dateStr;
+    cashExpenses = [];
+    buildExpensesTable();
     clearForm();
     updateDateLabels();
-    tryAutoFillCashOnHand();
   }
   currentWeekDate = dateStr;
   saveMeta({ lastWeek: dateStr });
@@ -437,6 +441,8 @@ function deleteWeek(dateStr) {
     if (existing) {
       applyState(existing);
     } else {
+      cashExpenses = [];
+      buildExpensesTable();
       clearForm();
       updateDateLabels();
     }
@@ -548,12 +554,29 @@ function buildCohBeforeTable() {
   tbody.innerHTML = '';
   const tr = document.createElement('tr');
   tr.className = 'coh-before-row';
-  let row = `<td class="row-label" data-i18n="cashOnHand">${t('cashOnHand')}</td>`;
+  let row = `<td class="row-label" data-i18n="cohBeforeCalc">${t('cohBeforeCalc')}</td>`;
   DAYS().forEach((_, i) => {
     row += `<td class="tot-cell" id="coh-before-${i}">$0.00</td>`;
   });
   tr.innerHTML = row;
   tbody.appendChild(tr);
+}
+
+function rebuildExpensesTablePreserveValues() {
+  const savedValues = {};
+  document.querySelectorAll('[data-key]').forEach(el => {
+    savedValues[el.dataset.key] = el.value;
+  });
+
+  buildExpensesTable();
+
+  Object.entries(savedValues).forEach(([k, v]) => {
+    const el = qsel(k);
+    if (el) el.value = v;
+  });
+
+  updateExpensesTotals();
+  updateCashOnHand();
 }
 
 function updateDateLabels() {
@@ -1108,9 +1131,8 @@ function confirmDeleteExpenses() {
   const msg = t('confirmDeleteNames').replace('{names}', names.join(', '));
   if (!confirm(msg)) return;
   cashExpenses = cashExpenses.filter(ex => !names.includes(ex));
-  saveMeta({ cashExpenses: cashExpenses.slice() });
   expenseDeleteMode = false;
-  buildExpensesTable();
+  rebuildExpensesTablePreserveValues();
   saveCurrentWeek();
   updateNotesCounter();
 }
@@ -1122,22 +1144,20 @@ function addExpense() {
   if (!isNameSafe(trimmed)) return;
   if (cashExpenses.includes(trimmed)) return;
   cashExpenses.push(trimmed);
-  saveMeta({ cashExpenses: cashExpenses.slice() });
-  buildExpensesTable();
+  rebuildExpensesTablePreserveValues();
   saveCurrentWeek();
   updateNotesCounter();
 }
 
 function removeExpense(ex) {
   cashExpenses = cashExpenses.filter(x => x !== ex);
-  saveMeta({ cashExpenses: cashExpenses.slice() });
-  buildExpensesTable();
+  rebuildExpensesTablePreserveValues();
   saveCurrentWeek();
   updateNotesCounter();
 }
 
 /* ═══════════════════════════════════════════
-   CASH ON HAND – auto-populate from previous week
+   CASH ON HAND – user-triggered auto-fill
 ═══════════════════════════════════════════ */
 
 /**
@@ -1162,47 +1182,32 @@ function calcEndingCash(weekData) {
   return cohBefore; // final day's "after"
 }
 
-function findPreviousWeekData(currentDateStr) {
+function findLatestAvailableWeekData(currentDateStr) {
   const weeks = getSavedWeeks(); // newest first
-  const prior = weeks.filter(w => w < currentDateStr);
-  if (prior.length === 0) return null;
-  return loadWeekData(prior[0]);
+  const candidate = weeks.find(w => w !== currentDateStr);
+  if (!candidate) return null;
+  return loadWeekData(candidate);
 }
 
 function autoFillCashOnHand() {
   const currentDate = document.getElementById('week-start').value;
   if (!currentDate) return;
-  const prevData = findPreviousWeekData(currentDate);
-  if (!prevData) {
+  const latestData = findLatestAvailableWeekData(currentDate);
+  if (!latestData) {
     showToast(t('cohNoPrevious'));
     return;
   }
-  const ending = calcEndingCash(prevData);
-  if (ending !== null) {
-    document.getElementById('coh-start').value = ending.toFixed(2);
-    saveState();
-    updateCashOnHand();
-    showToast(t('cohAutoFilled'));
-  } else {
-    showToast(t('cohNoPrevious'));
-  }
-}
 
-function tryAutoFillCashOnHand() {
-  const cohEl = document.getElementById('coh-start');
-  if (cohEl && !cohEl.value) {
-    const currentDate = document.getElementById('week-start').value;
-    if (!currentDate) return;
-    const prevData = findPreviousWeekData(currentDate);
-    if (prevData) {
-      const ending = calcEndingCash(prevData);
-      if (ending !== null && ending !== 0) {
-        cohEl.value = ending.toFixed(2);
-        saveState();
-        updateCashOnHand();
-      }
-    }
+  const ending = calcEndingCash(latestData);
+  if (ending === null) {
+    showToast(t('cohNoPrevious'));
+    return;
   }
+
+  document.getElementById('coh-start').value = ending.toFixed(2);
+  saveState();
+  updateCashOnHand();
+  showToast(t('cohAutoFilled'));
 }
 
 /**
@@ -1344,8 +1349,9 @@ function collectDataBase() {
   const out = { w: document.getElementById('week-start').value, e: employees.slice(), v: vendors.slice(), cx: cashExpenses.slice(), s: {}, h: {}, inv: {}, exp: {} };
   // Cash on hand
   const cohEl = document.getElementById('coh-start');
-  const cohVal = cohEl ? (parseFloat(cohEl.value) || 0) : 0;
-  if (cohVal) out.coh = cohVal;
+  const cohRaw = cohEl ? cohEl.value : '';
+  const cohVal = cohRaw === '' ? null : (parseFloat(cohRaw) || 0);
+  if (cohVal !== null) out.coh = cohVal;
   DAYS().forEach((_, i) => {
     ['sales','cash','cc','dd'].forEach(c => {
       const el = qsel(`s_${i}_${c}`);
@@ -1557,7 +1563,7 @@ function buildScreenshotClone(qrText) {
   forceEnglishClone(cohClone);
   styleCloneTable(cohClone);
   const cohLabel = cohClone.querySelector('.coh-before-row .row-label');
-  if (cohLabel) cohLabel.textContent = I18N.en.cashOnHand;
+  if (cohLabel) cohLabel.textContent = I18N.en.cohBeforeCalc;
   wrap.appendChild(cohClone);
 
   // Clone hours table — English title
@@ -1717,7 +1723,7 @@ function saveQRDataToStorage(jsonStr) {
   if (data.e) s['__employees'] = data.e;
   if (data.v) s['__vendors'] = data.v;
   if (data.cx) s['__cashExpenses'] = data.cx;
-  if (data.coh) s['coh_start'] = data.coh;
+  if (Object.prototype.hasOwnProperty.call(data, 'coh')) s['coh_start'] = data.coh;
   if (data.s) {
     Object.entries(data.s).forEach(([k, v]) => {
       s[`s_${k}`] = v;
@@ -2005,14 +2011,12 @@ function init() {
   if (meta.lang) currentLang = meta.lang;
   if (meta.employees && Array.isArray(meta.employees)) employees = meta.employees;
   if (meta.vendors && Array.isArray(meta.vendors)) vendors = meta.vendors;
-  if (meta.cashExpenses && Array.isArray(meta.cashExpenses)) cashExpenses = meta.cashExpenses;
   if (meta.storeName) storeName = meta.storeName;
   document.getElementById('store-name').textContent = storeName;
   const saved = loadState();
   // Use employees/vendors from saved week data if present (but NOT __lang — meta is authoritative)
   if (saved && saved['__employees'] && Array.isArray(saved['__employees'])) employees = saved['__employees'];
   if (saved && saved['__vendors'] && Array.isArray(saved['__vendors'])) vendors = saved['__vendors'];
-  if (saved && saved['__cashExpenses'] && Array.isArray(saved['__cashExpenses'])) cashExpenses = saved['__cashExpenses'];
 
   // Build tables
   buildSalesTable();
@@ -2075,7 +2079,6 @@ function init() {
     } else {
       clearForm();
       updateDateLabels();
-      tryAutoFillCashOnHand();
     }
     saveMeta({ lastWeek: newDate });
     renderHistory();
