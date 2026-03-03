@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="notranslate">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="google" content="notranslate" />
   <title>Mufu – Weekly Sales Report</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -13,339 +17,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- jsQR (scanning) -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-
-  <style>
-    /* ── Reset & base ── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:        #0f1117;
-      --surface:   #1a1d27;
-      --surface2:  #23273a;
-      --border:    #2e3350;
-      --accent:    #6c63ff;
-      --accent2:   #ff6584;
-      --text:      #e8eaf6;
-      --muted:     #7c82a8;
-      --success:   #43e97b;
-      --radius:    14px;
-      --input-h:   48px;
-    }
-
-    html { font-size: 16px; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      min-height: 100dvh;
-      padding: 16px;
-    }
-
-    /* ── Layout ── */
-    .app-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .app-header .logo {
-      width: 44px; height: 44px;
-      background: var(--accent);
-      border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    .app-header h1 { font-size: 1.4rem; font-weight: 700; }
-    .app-header p  { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
-
-    /* week selector row */
-    .week-bar {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .week-bar label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
-
-    .week-bar input[type="date"] {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      padding: 10px 14px;
-      font-size: 0.95rem;
-      height: var(--input-h);
-      outline: none;
-    }
-
-    /* ── Bento card ── */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 16px;
-      overflow: hidden;
-    }
-
-    .card-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* ── Scrollable table wrapper ── */
-    .table-wrap {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* ── Sales table ── */
-    table {
-      width: 100%;
-      min-width: 620px;
-      border-collapse: separate;
-      border-spacing: 0 6px;
-      font-size: 0.88rem;
-    }
-
-    thead th {
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      padding: 0 6px 6px;
-    }
-
-    thead th:first-child { text-align: left; }
-
-    tbody tr td {
-      background: var(--surface2);
-      padding: 6px 5px;
-    }
-
-    tbody tr td:first-child {
-      border-radius: var(--radius) 0 0 var(--radius);
-      padding-left: 12px;
-      min-width: 110px;
-    }
-
-    tbody tr td:last-child {
-      border-radius: 0 var(--radius) var(--radius) 0;
-      padding-right: 10px;
-    }
-
-    /* day label */
-    .day-label {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .day-label .day-name {
-      font-weight: 600;
-      font-size: 0.85rem;
-    }
-
-    .day-label .day-date {
-      font-size: 0.72rem;
-      color: var(--muted);
-    }
-
-    /* ── Inputs ── */
-    .inp {
-      background: transparent;
-      border: none;
-      border-bottom: 1.5px solid var(--border);
-      color: var(--text);
-      font-size: 0.95rem;
-      width: 100%;
-      padding: 6px 4px;
-      height: 40px;
-      outline: none;
-      text-align: right;
-      transition: border-color .2s;
-      -webkit-appearance: none;
-    }
-
-    .inp:focus { border-bottom-color: var(--accent); }
-    .inp::placeholder { color: var(--border); }
-
-    /* totals row */
-    .totals-row td {
-      background: transparent !important;
-      border-top: 1px solid var(--border);
-      padding-top: 10px;
-      font-weight: 700;
-      font-size: 0.85rem;
-      text-align: right;
-      color: var(--success);
-    }
-
-    .totals-row td:first-child { text-align: left; color: var(--muted); }
-
-    /* ── Hours table ── */
-    .hours-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0 6px;
-      font-size: 0.88rem;
-    }
-
-    .hours-table thead th {
-      color: var(--muted);
-      font-size: 0.7rem;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      padding: 0 6px 6px;
-      text-align: center;
-    }
-
-    .hours-table thead th:first-child { text-align: left; min-width: 90px; }
-
-    .hours-table tbody tr td {
-      background: var(--surface2);
-      padding: 5px 5px;
-    }
-
-    .hours-table tbody tr td:first-child {
-      border-radius: var(--radius) 0 0 var(--radius);
-      padding-left: 12px;
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: var(--text);
-      vertical-align: middle;
-    }
-
-    .hours-table tbody tr td:last-child {
-      border-radius: 0 var(--radius) var(--radius) 0;
-      padding-right: 10px;
-    }
-
-    .hours-table .inp { font-size: 0.88rem; height: 36px; }
-
-    /* hours totals */
-    .hours-totals td {
-      background: transparent !important;
-      border-top: 1px solid var(--border);
-      padding-top: 10px;
-      font-weight: 700;
-      font-size: 0.82rem;
-      text-align: center;
-      color: var(--success);
-    }
-
-    .hours-totals td:first-child { text-align: left; color: var(--muted); }
-
-    /* ── Action buttons ── */
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 0.95rem;
-      font-weight: 600;
-      padding: 16px 12px;
-      cursor: pointer;
-      transition: opacity .2s, transform .1s;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .btn:active { transform: scale(.97); opacity: .85; }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-
-    .btn-secondary {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    /* ── QR overlay ── */
-    #snapshot-wrap {
-      position: relative;
-      display: none;
-    }
-
-    #qr-corner {
-      position: absolute;
-      bottom: 12px;
-      right: 12px;
-      background: #fff;
-      padding: 4px;
-      border-radius: 4px;
-      line-height: 0;
-    }
-
-    /* ── Toast ── */
-    #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: var(--success);
-      color: #0f1117;
-      padding: 12px 22px;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      transition: transform .3s ease;
-      z-index: 999;
-      white-space: nowrap;
-      pointer-events: none;
-    }
-
-    #toast.show { transform: translateX(-50%) translateY(0); }
-
-    /* ── Hidden file input ── */
-    #qr-file-input { display: none; }
-
-    /* ── Snapshot clone styles (used for screenshot) ── */
-    #snapshot-clone {
-      background: #1a1d27;
-      padding: 20px;
-      border-radius: 16px;
-      min-width: 660px;
-      position: absolute;
-      left: -9999px;
-      top: 0;
-    }
-
-    /* highlight today */
-    tr.today-row td { border-top: 2px solid var(--accent2); }
-
-    /* responsive narrow screens */
-    @media (max-width: 480px) {
-      body { padding: 10px; }
-      .actions { grid-template-columns: 1fr; }
-      .btn { padding: 18px 12px; font-size: 1rem; }
-    }
-  </style>
 </head>
-<body>
+<body translate="no">
 
 <!-- ══════════════════════════════════════════
      Header
@@ -354,15 +27,25 @@
   <div class="logo">
     <i data-lucide="utensils" style="color:#fff;width:24px;height:24px;"></i>
   </div>
-  <div>
-    <h1>Mufu</h1>
-    <p>Weekly Sales &amp; Hours Log</p>
+  <div class="header-text">
+    <div class="store-name-row" translate="no">
+      <h1 id="store-name">Store Name</h1>
+      <button class="btn-edit-name" id="btn-edit-name" title="Edit store name">
+        <i data-lucide="pencil" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <p data-i18n="subtitle">Weekly Sales &amp; Hours Log</p>
+  </div>
+  <div class="lang-bar" translate="no">
+    <button class="lang-btn active" data-lang="en">EN</button>
+    <button class="lang-btn" data-lang="zh">中文</button>
+    <button class="lang-btn" data-lang="es">ES</button>
   </div>
 </header>
 
 <!-- week picker -->
 <div class="week-bar">
-  <label for="week-start">Week starting:</label>
+  <label for="week-start" data-i18n="weekStarting">Week starting:</label>
   <input type="date" id="week-start" />
 </div>
 
@@ -372,14 +55,28 @@
 <div class="actions">
   <button class="btn btn-primary" id="btn-snapshot">
     <i data-lucide="camera" style="width:18px;height:18px;"></i>
-    Generate Snapshot
+    <span data-i18n="generateSnapshot">Generate Snapshot</span>
   </button>
-  <button class="btn btn-secondary" id="btn-restore">
-    <i data-lucide="scan-qr-code" style="width:18px;height:18px;"></i>
-    Restore from QR
+  <button class="btn btn-secondary" id="btn-history">
+    <i data-lucide="history" style="width:18px;height:18px;"></i>
+    <span data-i18n="previousWeeks">Previous Weeks</span>
+  </button>
+  <button class="btn btn-secondary btn-upload-wrap" id="btn-bulk-upload">
+    <i data-lucide="upload" style="width:18px;height:18px;"></i>
+    <span data-i18n="uploadPastWeeks">Upload Past Weeks</span>
+    <span class="btn-info" id="btn-info" title="Info" aria-label="Info">
+      <i data-lucide="info" style="width:16px;height:16px;"></i>
+    </span>
   </button>
 </div>
-<input type="file" id="qr-file-input" accept="image/*" />
+<input type="file" id="bulk-file-input" accept="image/*" multiple />
+
+<!-- Info popup -->
+<div class="info-overlay" id="info-overlay"></div>
+<div class="info-popup" id="info-popup">
+  <button class="info-popup-close" id="btn-info-close" aria-label="Close">&times;</button>
+  <p id="info-text" data-i18n="infoMessage">All data is stored only on your device. If you delete the app, clear your storage, switch phones, or change browsers, your data will be lost. However, every snapshot includes a QR code — simply upload your snapshot photos here to restore all your previous weeks instantly.</p>
+</div>
 
 <!-- ══════════════════════════════════════════
      Sales Card
@@ -387,30 +84,59 @@
 <div class="card" id="sales-card">
   <div class="card-title">
     <i data-lucide="trending-up" style="width:14px;height:14px;"></i>
-    Daily Sales
+    <span data-i18n="dailySales">Daily Sales</span>
   </div>
   <div class="table-wrap">
     <table id="sales-table">
       <thead>
-        <tr>
-          <th>Day</th>
-          <th>Total Sales</th>
-          <th>Cash</th>
-          <th>Credit Card</th>
-          <th>DoorDash / Uber</th>
+        <tr id="sales-head-row">
+          <th></th>
+          <!-- day columns injected by JS -->
+          <th data-i18n="totals">Totals</th>
         </tr>
       </thead>
-      <tbody id="sales-body"></tbody>
+      <tbody id="sales-body">
+        <!-- rows (Sales, Cash, CC, DD) injected by JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Invoices Card
+══════════════════════════════════════════ -->
+<div class="card" id="invoices-card">
+  <div class="card-title">
+    <i data-lucide="receipt" style="width:14px;height:14px;"></i>
+    <span data-i18n="invoices">Invoices</span>
+  </div>
+  <div class="table-wrap">
+    <table id="invoices-table">
+      <thead>
+        <tr id="invoices-head-row">
+          <th data-i18n="vendor">Vendor</th>
+          <!-- day columns injected by JS -->
+          <th data-i18n="totals">Totals</th>
+        </tr>
+      </thead>
+      <tbody id="invoices-body"></tbody>
       <tfoot>
-        <tr class="totals-row">
-          <td>Totals</td>
-          <td id="tot-sales">$0.00</td>
-          <td id="tot-cash">$0.00</td>
-          <td id="tot-cc">$0.00</td>
-          <td id="tot-dd">$0.00</td>
+        <tr class="totals-row" id="invoices-totals-row">
+          <td data-i18n="totals">Totals</td>
+          <!-- day totals injected by JS -->
         </tr>
       </tfoot>
     </table>
+  </div>
+  <div class="emp-actions" id="vendor-actions">
+    <button class="btn-emp btn-emp-add" id="btn-add-vendor">
+      <i data-lucide="plus" style="width:15px;height:15px;"></i>
+      <span data-i18n="addVendor">Add Vendor</span>
+    </button>
+    <button class="btn-emp btn-emp-del-toggle" id="btn-del-vendor-mode">
+      <i data-lucide="minus" style="width:15px;height:15px;"></i>
+      <span data-i18n="deleteVendors">Delete Vendors</span>
+    </button>
   </div>
 </div>
 
@@ -420,20 +146,20 @@
 <div class="card" id="hours-card">
   <div class="card-title">
     <i data-lucide="clock" style="width:14px;height:14px;"></i>
-    Employee Hours
+    <span data-i18n="employeeHours">Employee Hours</span>
   </div>
   <div class="table-wrap">
     <table class="hours-table" id="hours-table">
       <thead>
         <tr id="hours-head-row">
-          <th>Employee</th>
+          <th data-i18n="employee">Employee</th>
           <!-- day columns injected by JS -->
         </tr>
       </thead>
       <tbody id="hours-body"></tbody>
       <tfoot>
         <tr class="hours-totals" id="hours-totals-row">
-          <td>Total hrs</td>
+          <td data-i18n="totalHrs">Total hrs</td>
           <!-- totals injected by JS -->
         </tr>
       </tfoot>
@@ -441,479 +167,63 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════
+     Notes
+══════════════════════════════════════════ -->
+<div class="card" id="notes-card">
+  <div class="card-title">
+    <i data-lucide="message-square" style="width:14px;height:14px;"></i>
+    <span data-i18n="notes">Notes</span>
+  </div>
+  <textarea class="notes-box" id="week-notes" data-key="notes" placeholder="Add notes for this week…" data-i18n-placeholder="notesPlaceholder"></textarea>
+  <div class="notes-counter" id="notes-counter"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Export CSV
+══════════════════════════════════════════ -->
+<div class="csv-section">
+  <p class="csv-hint" data-i18n="csvHint">Download this week as a .csv file for Excel, Google Sheets, or Numbers.</p>
+  <button class="btn btn-csv" id="btn-export-csv">
+    <i data-lucide="file-spreadsheet" style="width:18px;height:18px;"></i>
+    <span data-i18n="exportCSV">Export CSV</span>
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Previous Weeks Sidebar
+══════════════════════════════════════════ -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<aside class="sidebar" id="history-panel">
+  <div class="sidebar-header">
+    <div class="sidebar-title">
+      <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+      <span data-i18n="previousWeeks">Previous Weeks</span>
+    </div>
+    <button class="sidebar-close" id="btn-history-close" aria-label="Close">&times;</button>
+  </div>
+  <div id="history-list" class="history-list">
+    <!-- filled by JS -->
+  </div>
+  <div class="history-empty" id="history-empty" style="display:none;">
+    <span data-i18n="noSavedWeeks">No saved weeks yet. Enter data or upload past week snapshots.</span>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sidebar-limit-text" data-i18n="weeksMax">20 weeks max stored on device</div>
+    <button class="btn btn-danger-outline" id="btn-delete-oldest" data-i18n="deleteOldest10">Delete Oldest 10 Weeks</button>
+  </div>
+</aside>
+
 <!-- QR / snapshot hidden container -->
 <div id="snapshot-wrap">
   <div id="qr-corner"></div>
 </div>
 
 <!-- Toast notification -->
-<div id="toast">✓ Saved to Photos</div>
+<div id="toast"></div>
 
-<script>
-/* ═══════════════════════════════════════════
-   CONFIG
-═══════════════════════════════════════════ */
-const DAYS   = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-const EMPLOYEES = ['Ivan', 'Nelson', 'Maria', 'Carlos', 'Jess'];
-const LOCAL_STORAGE_KEY = 'mufu_v1';
-const QR_SIZE = 96; // px – QR code embedded in snapshot
-const QR_RENDER_DELAY_MS = 300; // ms – allow QRCode.js canvas to finish painting before html2canvas
+<!-- App logic -->
+<script src="app.js"></script>
 
-/* ═══════════════════════════════════════════
-   STATE helpers
-═══════════════════════════════════════════ */
-function loadState() {
-  try { return JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {}; }
-  catch(e) { return {}; }
-}
-
-function saveState() {
-  const s = {};
-  document.querySelectorAll('[data-key]').forEach(el => {
-    s[el.dataset.key] = el.value;
-  });
-  s['__weekStart'] = document.getElementById('week-start').value;
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(s));
-}
-
-function applyState(s) {
-  Object.entries(s).forEach(([k, v]) => {
-    const el = document.querySelector(`[data-key="${k}"]`);
-    if (el) el.value = v;
-  });
-  if (s['__weekStart']) {
-    document.getElementById('week-start').value = s['__weekStart'];
-  }
-  updateDateLabels();
-  updateSalesTotals();
-  updateHoursTotals();
-}
-
-/* ═══════════════════════════════════════════
-   WEEK START – default to current Monday
-═══════════════════════════════════════════ */
-function thisMonday() {
-  const d = new Date();
-  const day = d.getDay(); // 0=Sun
-  const diff = (day === 0) ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d;
-}
-
-function formatDate(d) {
-  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
-}
-
-function isoDate(d) {
-  return d.toISOString().slice(0,10);
-}
-
-function getWeekDates() {
-  const raw = document.getElementById('week-start').value;
-  // Parse date string as local time (appending time component prevents UTC interpretation)
-  const base = raw ? new Date(raw + 'T00:00:00') : thisMonday();
-  return DAYS.map((_, i) => {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
-    return d;
-  });
-}
-
-/* ═══════════════════════════════════════════
-   BUILD SALES TABLE
-═══════════════════════════════════════════ */
-function buildSalesTable() {
-  const tbody = document.getElementById('sales-body');
-  tbody.innerHTML = '';
-
-  DAYS.forEach((day, i) => {
-    const tr = document.createElement('tr');
-    tr.dataset.dayIndex = i;
-
-    const cols = ['sales','cash','cc','dd'];
-
-    tr.innerHTML = `
-      <td>
-        <div class="day-label">
-          <span class="day-name">${day}</span>
-          <span class="day-date" data-day-date="${i}"></span>
-        </div>
-      </td>
-      ${cols.map((c) => `
-        <td>
-          <input class="inp" type="number" inputmode="decimal" min="0" step="0.01"
-            placeholder="0.00"
-            data-key="s_${i}_${c}"
-            data-col="${c}"
-            data-row="${i}" />
-        </td>`).join('')}
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function updateDateLabels() {
-  const dates = getWeekDates();
-  const today = isoDate(new Date());
-
-  DAYS.forEach((_, i) => {
-    const span = document.querySelector(`[data-day-date="${i}"]`);
-    if (span) span.textContent = formatDate(dates[i]);
-
-    // highlight today
-    const row = document.querySelector(`tr[data-day-index="${i}"]`);
-    if (row) {
-      if (isoDate(dates[i]) === today) row.classList.add('today-row');
-      else row.classList.remove('today-row');
-    }
-  });
-}
-
-/* ═══════════════════════════════════════════
-   BUILD HOURS TABLE
-═══════════════════════════════════════════ */
-function buildHoursTable() {
-  // header: Employee + one col per day
-  const headRow = document.getElementById('hours-head-row');
-  headRow.innerHTML = '<th>Employee</th>';
-  DAYS.forEach(d => {
-    const th = document.createElement('th');
-    th.textContent = d.slice(0,3); // Mon, Tue …
-    headRow.appendChild(th);
-  });
-  // totals footer
-  const totRow = document.getElementById('hours-totals-row');
-  totRow.innerHTML = '<td>Total hrs</td>';
-  DAYS.forEach((_, i) => {
-    const td = document.createElement('td');
-    td.id = `htot-${i}`;
-    td.textContent = '0';
-    totRow.appendChild(td);
-  });
-
-  // body
-  const tbody = document.getElementById('hours-body');
-  tbody.innerHTML = '';
-  EMPLOYEES.forEach(emp => {
-    const tr = document.createElement('tr');
-    let row = `<td>${emp}</td>`;
-    DAYS.forEach((_, i) => {
-      const key = `h_${emp}_${i}`;
-      row += `<td><input class="inp" type="number" inputmode="decimal" min="0" step="0.5"
-        placeholder="0"
-        data-key="${key}"
-        data-emp="${emp}"
-        data-day="${i}" /></td>`;
-    });
-    tr.innerHTML = row;
-    tbody.appendChild(tr);
-  });
-}
-
-/* ═══════════════════════════════════════════
-   TOTALS
-═══════════════════════════════════════════ */
-function fmt(n) { return '$' + n.toFixed(2); }
-
-function updateSalesTotals() {
-  const cols = ['sales','cash','cc','dd'];
-  const ids  = ['tot-sales','tot-cash','tot-cc','tot-dd'];
-  cols.forEach((c, ci) => {
-    let sum = 0;
-    DAYS.forEach((_, i) => {
-      const el = document.querySelector(`[data-key="s_${i}_${c}"]`);
-      sum += el ? (parseFloat(el.value) || 0) : 0;
-    });
-    document.getElementById(ids[ci]).textContent = fmt(sum);
-  });
-}
-
-function updateHoursTotals() {
-  DAYS.forEach((_, i) => {
-    let sum = 0;
-    EMPLOYEES.forEach(emp => {
-      const el = document.querySelector(`[data-key="h_${emp}_${i}"]`);
-      sum += el ? (parseFloat(el.value) || 0) : 0;
-    });
-    const td = document.getElementById(`htot-${i}`);
-    if (td) td.textContent = sum % 1 === 0 ? sum : sum.toFixed(1);
-  });
-}
-
-/* ═══════════════════════════════════════════
-   SNAPSHOT / QR GENERATION
-═══════════════════════════════════════════ */
-function collectData() {
-  const out = { w: document.getElementById('week-start').value, s: {}, h: {} };
-  DAYS.forEach((_, i) => {
-    ['sales','cash','cc','dd'].forEach(c => {
-      const el = document.querySelector(`[data-key="s_${i}_${c}"]`);
-      const v = el ? (parseFloat(el.value) || 0) : 0;
-      if (v) out.s[`${i}_${c}`] = v;
-    });
-  });
-  EMPLOYEES.forEach(emp => {
-    DAYS.forEach((_, i) => {
-      const el = document.querySelector(`[data-key="h_${emp}_${i}"]`);
-      const v = el ? (parseFloat(el.value) || 0) : 0;
-      if (v) out.h[`${emp}|${i}`] = v;
-    });
-  });
-  return JSON.stringify(out);
-}
-
-async function generateSnapshot() {
-  const btn = document.getElementById('btn-snapshot');
-  btn.disabled = true;
-  btn.textContent = 'Working…';
-
-  try {
-    const jsonStr = collectData();
-
-    // Build an off-screen clone for screenshot
-    const clone = buildScreenshotClone(jsonStr);
-    document.body.appendChild(clone);
-
-    // Small delay so QR canvas renders
-    await new Promise(r => setTimeout(r, QR_RENDER_DELAY_MS));
-
-    const canvas = await html2canvas(clone, {
-      backgroundColor: '#1a1d27',
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
-
-    document.body.removeChild(clone);
-
-    // Download
-    const link = document.createElement('a');
-    const weekVal = document.getElementById('week-start').value || 'week';
-    link.download = `mufu-${weekVal}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-
-    showToast('📸 Snapshot saved!');
-  } catch(e) {
-    console.error(e);
-    showToast('⚠ Error generating snapshot');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="camera" style="width:18px;height:18px;"></i> Generate Snapshot';
-    lucide.createIcons();
-  }
-}
-
-function buildScreenshotClone(jsonStr) {
-  const wrap = document.createElement('div');
-  wrap.style.cssText = [
-    'position:absolute','left:-9999px','top:0',
-    'background:#1a1d27','padding:20px',
-    'border-radius:16px','min-width:680px',
-    'font-family:Segoe UI,system-ui,sans-serif',
-    'color:#e8eaf6'
-  ].join(';');
-
-  // Title
-  const dates = getWeekDates();
-  const title = document.createElement('div');
-  title.style.cssText = 'font-size:18px;font-weight:700;margin-bottom:14px;';
-  title.textContent = `Mufu – Week of ${formatDate(dates[0])} – ${formatDate(dates[6])}`;
-  wrap.appendChild(title);
-
-  // Clone sales table
-  const salesClone = document.getElementById('sales-table').cloneNode(true);
-  styleCloneTable(salesClone);
-  wrap.appendChild(salesClone);
-
-  // Clone hours table
-  const hoursTitle = document.createElement('div');
-  hoursTitle.style.cssText = 'font-size:13px;font-weight:600;color:#7c82a8;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
-  hoursTitle.textContent = 'Employee Hours';
-  wrap.appendChild(hoursTitle);
-
-  const hoursClone = document.getElementById('hours-table').cloneNode(true);
-  styleCloneTable(hoursClone);
-  // replace inputs with text
-  hoursClone.querySelectorAll('input').forEach(inp => {
-    const span = document.createElement('span');
-    span.textContent = inp.value || '–';
-    span.style.cssText = 'display:block;text-align:right;font-size:13px;padding:4px;';
-    inp.parentNode.replaceChild(span, inp);
-  });
-  wrap.appendChild(hoursClone);
-
-  // Also replace sales inputs
-  salesClone.querySelectorAll('input').forEach(inp => {
-    const span = document.createElement('span');
-    const v = parseFloat(inp.value);
-    span.textContent = isNaN(v) ? '–' : '$' + v.toFixed(2);
-    span.style.cssText = 'display:block;text-align:right;font-size:13px;padding:4px;';
-    inp.parentNode.replaceChild(span, inp);
-  });
-
-  // QR code container
-  const qrWrap = document.createElement('div');
-  qrWrap.style.cssText = [
-    'position:absolute','bottom:20px','right:20px',
-    'background:#fff','padding:4px',
-    'border-radius:4px','line-height:0'
-  ].join(';');
-  wrap.style.position = 'relative';
-  wrap.appendChild(qrWrap);
-
-  // Generate QR
-  new QRCode(qrWrap, {
-    text: jsonStr,
-    width: QR_SIZE,
-    height: QR_SIZE,
-    correctLevel: QRCode.CorrectLevel.M
-  });
-
-  return wrap;
-}
-
-function styleCloneTable(tbl) {
-  tbl.style.cssText = 'width:100%;border-collapse:separate;border-spacing:0 5px;font-size:13px;margin-bottom:4px;';
-  tbl.querySelectorAll('th').forEach(th => {
-    th.style.cssText = 'color:#7c82a8;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:0 6px 6px;text-align:center;';
-  });
-  tbl.querySelectorAll('thead th:first-child, tfoot td:first-child').forEach(el => {
-    el.style.textAlign = 'left';
-  });
-  tbl.querySelectorAll('tbody td').forEach(td => {
-    td.style.cssText = 'background:#23273a;padding:5px 8px;';
-  });
-  tbl.querySelectorAll('tbody tr').forEach(tr => {
-    const tds = tr.querySelectorAll('td');
-    if (tds[0]) { tds[0].style.borderRadius = '8px 0 0 8px'; tds[0].style.paddingLeft = '12px'; }
-    if (tds[tds.length-1]) tds[tds.length-1].style.borderRadius = '0 8px 8px 0';
-  });
-  tbl.querySelectorAll('tfoot td').forEach(td => {
-    td.style.cssText = 'border-top:1px solid #2e3350;padding-top:8px;font-weight:700;color:#43e97b;text-align:right;font-size:13px;';
-  });
-  tbl.querySelectorAll('tfoot td:first-child').forEach(td => {
-    td.style.color = '#7c82a8';
-    td.style.textAlign = 'left';
-  });
-}
-
-/* ═══════════════════════════════════════════
-   RESTORE FROM QR
-═══════════════════════════════════════════ */
-function triggerRestore() {
-  document.getElementById('qr-file-input').click();
-}
-
-async function handleQRFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width  = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    // 'dontInvert' skips inversion pass; QR codes generated by this app use dark-on-white which needs no inversion
-    const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
-    if (code) {
-      try {
-        restoreFromJSON(code.data);
-        showToast('✅ Data restored from QR!');
-      } catch(err) {
-        showToast('⚠ Could not parse QR data');
-      }
-    } else {
-      showToast('⚠ No QR code found in image');
-    }
-  };
-  img.onerror = () => showToast('⚠ Could not load image');
-  img.src = URL.createObjectURL(file);
-  e.target.value = ''; // reset so same file can be re-selected
-}
-
-function restoreFromJSON(jsonStr) {
-  const data = JSON.parse(jsonStr);
-  if (data.w) {
-    document.getElementById('week-start').value = data.w;
-    updateDateLabels();
-  }
-  // sales
-  if (data.s) {
-    Object.entries(data.s).forEach(([k, v]) => {
-      const el = document.querySelector(`[data-key="s_${k}"]`);
-      if (el) el.value = v;
-    });
-  }
-  // hours
-  if (data.h) {
-    Object.entries(data.h).forEach(([k, v]) => {
-      const [emp, day] = k.split('|');
-      const el = document.querySelector(`[data-key="h_${emp}_${day}"]`);
-      if (el) el.value = v;
-    });
-  }
-  updateSalesTotals();
-  updateHoursTotals();
-  saveState();
-}
-
-/* ═══════════════════════════════════════════
-   TOAST
-═══════════════════════════════════════════ */
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-/* ═══════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════ */
-function init() {
-  // Set default week start
-  const mon = thisMonday();
-  document.getElementById('week-start').value = isoDate(mon);
-
-  // Build tables
-  buildSalesTable();
-  buildHoursTable();
-
-  // Load saved state (may override week-start)
-  const saved = loadState();
-  if (Object.keys(saved).length) applyState(saved);
-  else updateDateLabels();
-
-  // Week change
-  document.getElementById('week-start').addEventListener('change', () => {
-    updateDateLabels();
-    saveState();
-  });
-
-  // Auto-save + totals on input
-  document.addEventListener('input', e => {
-    if (e.target.matches('[data-key]')) {
-      saveState();
-      const col = e.target.dataset.col;
-      if (col) updateSalesTotals();
-      if (e.target.dataset.emp) updateHoursTotals();
-    }
-  });
-
-  // Buttons
-  document.getElementById('btn-snapshot').addEventListener('click', generateSnapshot);
-  document.getElementById('btn-restore').addEventListener('click', triggerRestore);
-  document.getElementById('qr-file-input').addEventListener('change', handleQRFile);
-
-  // Lucide icons
-  lucide.createIcons();
-}
-
-document.addEventListener('DOMContentLoaded', init);
-</script>
 </body>
 </html>
