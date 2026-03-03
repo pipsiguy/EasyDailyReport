@@ -1544,29 +1544,41 @@ function buildScreenshotClone(qrText) {
   // Remove auto-fill button from clone (no longer in sales table, but just in case)
   salesClone.querySelectorAll('.btn-auto-fill-inline, .btn-auto-fill-sm').forEach(btn => btn.remove());
 
-  // Clone Cash on Hand before calculation section
+  // Clone Cash on Hand before calculation — single clean row
   const cohStartEl = document.getElementById('coh-start');
   const cohStartVal = cohStartEl ? (parseFloat(cohStartEl.value) || 0) : 0;
 
-  const cohTitle = document.createElement('div');
-  cohTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
-  cohTitle.textContent = I18N.en.cohBeforeCalc;
-  wrap.appendChild(cohTitle);
+  const cohSection = document.createElement('div');
+  cohSection.style.cssText = 'margin:16px 0 8px;';
 
-  // Starting cash line
-  if (cohStartVal) {
-    const cohLine = document.createElement('div');
-    cohLine.style.cssText = 'font-size:13px;color:#1e1e2f;margin-bottom:8px;padding:6px 12px;background:#eef0f4;border-radius:8px;display:inline-block;';
-    cohLine.innerHTML = `<strong style="color:#6b7194;font-size:11px;letter-spacing:.05em;">${I18N.en.startingCash}:</strong> <span style="font-weight:700;margin-left:6px;">$${cohStartVal.toFixed(2)}</span>`;
-    wrap.appendChild(cohLine);
+  const cohTitle = document.createElement('div');
+  cohTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;';
+  cohTitle.textContent = I18N.en.cohBeforeCalc;
+  cohSection.appendChild(cohTitle);
+
+  // Build a single inline row: Starting Cash + day values
+  const cohRow = document.createElement('div');
+  cohRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
+
+  // Starting cash badge
+  const cohBadge = document.createElement('span');
+  cohBadge.style.cssText = 'font-size:12px;color:#1e1e2f;padding:5px 10px;background:#eef0f4;border-radius:8px;font-weight:600;';
+  cohBadge.textContent = `${I18N.en.startingCash}: $${cohStartVal.toFixed(2)}`;
+  cohRow.appendChild(cohBadge);
+
+  // Day values from the live COH-before cells
+  const enDaysSnap = I18N.en.daysShort;
+  for (let i = 0; i < 7; i++) {
+    const cell = document.getElementById(`coh-before-${i}`);
+    const val = cell ? cell.textContent : '$0.00';
+    const dayBadge = document.createElement('span');
+    dayBadge.style.cssText = 'font-size:12px;color:#1e1e2f;padding:5px 10px;background:#eef0f4;border-radius:8px;text-align:center;';
+    dayBadge.innerHTML = `<span style="font-size:10px;color:#6b7194;display:block;">${enDaysSnap[i]}</span><span style="font-weight:700;">${val}</span>`;
+    cohRow.appendChild(dayBadge);
   }
 
-  const cohClone = document.getElementById('coh-before-table').cloneNode(true);
-  forceEnglishClone(cohClone);
-  styleCloneTable(cohClone);
-  const cohLabel = cohClone.querySelector('.coh-before-row .row-label');
-  if (cohLabel) cohLabel.textContent = '';
-  wrap.appendChild(cohClone);
+  cohSection.appendChild(cohRow);
+  wrap.appendChild(cohSection);
 
   // Clone hours table — English title
   const hoursTitle = document.createElement('div');
@@ -1634,6 +1646,29 @@ function buildScreenshotClone(qrText) {
     const cohAfterLabel = expClone.querySelector('.coh-after-row .row-label');
     if (cohAfterLabel) cohAfterLabel.textContent = I18N.en.cashOnHand;
     wrap.appendChild(expClone);
+  }
+
+  // Always show Cash on Hand row in snapshot (even without expenses)
+  {
+    const cohAfterTitle = document.createElement('div');
+    cohAfterTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
+    cohAfterTitle.textContent = I18N.en.cashOnHand;
+    wrap.appendChild(cohAfterTitle);
+
+    const cohAfterRow = document.createElement('div');
+    cohAfterRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
+
+    const enDaysCoh = I18N.en.daysShort;
+    for (let i = 0; i < 7; i++) {
+      const cell = document.getElementById(`coh-after-${i}`);
+      const val = cell ? cell.textContent : '$0.00';
+      const dayBadge = document.createElement('span');
+      dayBadge.style.cssText = 'font-size:12px;color:#1e1e2f;padding:5px 10px;background:#eef0f4;border-radius:8px;text-align:center;';
+      dayBadge.innerHTML = `<span style="font-size:10px;color:#6b7194;display:block;">${enDaysCoh[i]}</span><span style="font-weight:700;">${val}</span>`;
+      cohAfterRow.appendChild(dayBadge);
+    }
+
+    wrap.appendChild(cohAfterRow);
   }
 
   // Notes section (if any)
