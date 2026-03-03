@@ -1,2 +1,2 @@
-# Mufu
-local data entry. browser cache only
+# Easy Daily Report
+
