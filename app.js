@@ -20,7 +20,7 @@ const QR_MAX_BYTES = 2900;  // QR capacity with EC Level L; maxJsonBytes() = ~21
 ═══════════════════════════════════════════ */
 const I18N = {
   en: {
-    subtitle: 'Weekly Sales & Hours Log',
+    subtitle: 'Easy Daily Report',
     weekStarting: 'Week starting:',
     generateSnapshot: 'Generate Snapshot',
     dailySales: 'Daily Sales',
@@ -92,7 +92,7 @@ const I18N = {
     cohNoPrevious: '⚠ No previous week data found to auto-fill from'
   },
   zh: {
-    subtitle: '每周销售和工时记录',
+    subtitle: 'Easy Daily Report',
     weekStarting: '周起始日：',
     generateSnapshot: '生成快照',
     dailySales: '每日销售',
@@ -164,7 +164,7 @@ const I18N = {
     cohNoPrevious: '⚠ 未找到可自动填充的上周数据'
   },
   es: {
-    subtitle: 'Registro Semanal de Ventas y Horas',
+    subtitle: 'Easy Daily Report',
     weekStarting: 'Semana iniciando:',
     generateSnapshot: 'Generar Captura',
     dailySales: 'Ventas Diarias',
