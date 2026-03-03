@@ -50,6 +50,31 @@
 </div>
 
 <!-- ══════════════════════════════════════════
+     Cash on Hand
+══════════════════════════════════════════ -->
+<div class="card cash-on-hand-card" id="cash-on-hand-card">
+  <div class="card-title">
+    <i data-lucide="banknote" style="width:14px;height:14px;"></i>
+    <span data-i18n="cashOnHand">Cash on Hand</span>
+  </div>
+  <div class="coh-row">
+    <label class="coh-label" data-i18n="startingCash">Starting Cash</label>
+    <div class="coh-input-wrap">
+      <span class="coh-dollar">$</span>
+      <input class="inp coh-inp" type="number" inputmode="decimal" min="0" step="0.01"
+        placeholder="0.00"
+        data-key="coh_start"
+        id="coh-start" />
+    </div>
+    <button class="btn-auto-fill" id="btn-auto-fill-coh" title="Auto-fill from previous week">
+      <i data-lucide="wand-2" style="width:14px;height:14px;"></i>
+      <span data-i18n="autoFill">Auto-fill</span>
+    </button>
+  </div>
+  <div class="coh-hint" id="coh-hint" data-i18n="cohHint">Tip: Use auto-fill to pull from the most recent previous week, or enter manually.</div>
+</div>
+
+<!-- ══════════════════════════════════════════
      Action Buttons
 ══════════════════════════════════════════ -->
 <div class="actions">
@@ -136,6 +161,44 @@
     <button class="btn-emp btn-emp-del-toggle" id="btn-del-vendor-mode">
       <i data-lucide="minus" style="width:15px;height:15px;"></i>
       <span data-i18n="deleteVendors">Delete Vendors</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Cash Expenses Card
+══════════════════════════════════════════ -->
+<div class="card" id="expenses-card">
+  <div class="card-title">
+    <i data-lucide="wallet" style="width:14px;height:14px;"></i>
+    <span data-i18n="Cash Expenses">Cash Expenses</span>
+  </div>
+  <div class="table-wrap">
+    <table id="expenses-table">
+      <thead>
+        <tr id="expenses-head-row">
+          <th data-i18n="expense">Expense</th>
+          <!-- day columns injected by JS -->
+          <th data-i18n="totals">Totals</th>
+        </tr>
+      </thead>
+      <tbody id="expenses-body"></tbody>
+      <tfoot>
+        <tr class="totals-row" id="expenses-totals-row">
+          <td data-i18n="totals">Totals</td>
+          <!-- day totals injected by JS -->
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <div class="emp-actions" id="expense-actions">
+    <button class="btn-emp btn-emp-add" id="btn-add-expense">
+      <i data-lucide="plus" style="width:15px;height:15px;"></i>
+      <span data-i18n="Add Expense">Add Expense</span>
+    </button>
+    <button class="btn-emp btn-emp-del-toggle" id="btn-del-expense-mode">
+      <i data-lucide="minus" style="width:15px;height:15px;"></i>
+      <span data-i18n="Delete Expenses">Delete Expenses</span>
     </button>
   </div>
 </div>

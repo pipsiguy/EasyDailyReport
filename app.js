@@ -61,6 +61,11 @@ const I18N = {
     addVendor: 'Add Vendor',
     deleteVendors: 'Delete Vendors',
     vendorName: 'Vendor name:',
+    cashExpenses: 'Cash Expenses',
+    expense: 'Expense',
+    addExpense: 'Add Expense',
+    deleteExpenses: 'Delete Expenses',
+    expenseName: 'Expense name:',
     storeName: 'Store Name',
     editStoreName: 'Enter store name:',
     storeNameRequired: 'Please enter your store name before generating a snapshot:',
@@ -78,7 +83,13 @@ const I18N = {
     forbiddenChars: '⚠ Names cannot contain < > " & characters',
     exportCSV: 'Export CSV',
     csvHint: 'Download this week as a .csv file for Excel, Google Sheets, or Numbers.',
-    csvSaved: '📄 CSV exported!'
+    csvSaved: '📄 CSV exported!',
+    cashOnHand: 'Cash on Hand',
+    startingCash: 'Starting Cash',
+    autoFill: 'Auto-fill',
+    cohHint: 'Tip: Use auto-fill to pull from the most recent previous week, or enter manually.',
+    cohAutoFilled: '✅ Starting cash auto-filled from previous week',
+    cohNoPrevious: '⚠ No previous week data found to auto-fill from'
   },
   zh: {
     subtitle: '每周销售和工时记录',
@@ -122,6 +133,11 @@ const I18N = {
     addVendor: '添加供应商',
     deleteVendors: '删除供应商',
     vendorName: '供应商名称：',
+    cashExpenses: '现金支出',
+    expense: '支出',
+    addExpense: '添加支出',
+    deleteExpenses: '删除支出',
+    expenseName: '支出名称：',
     storeName: '店铺名称',
     editStoreName: '输入店铺名称：',
     storeNameRequired: '生成快照前请先输入店铺名称：',
@@ -139,7 +155,13 @@ const I18N = {
     forbiddenChars: '⚠ 名称不能包含 < > " & 字符',
     exportCSV: '导出 CSV',
     csvHint: '将本周数据下载为 .csv 文件，可在 Excel、Google Sheets 或 Numbers 中打开。',
-    csvSaved: '📄 CSV 已导出！'
+    csvSaved: '📄 CSV 已导出！',
+    cashOnHand: '手头现金',
+    startingCash: '期初现金',
+    autoFill: '自动填充',
+    cohHint: '提示：使用自动填充从最近的上一周提取，或手动输入。',
+    cohAutoFilled: '✅ 期初现金已从上周自动填充',
+    cohNoPrevious: '⚠ 未找到可自动填充的上周数据'
   },
   es: {
     subtitle: 'Registro Semanal de Ventas y Horas',
@@ -183,6 +205,11 @@ const I18N = {
     addVendor: 'Agregar Proveedor',
     deleteVendors: 'Eliminar Proveedores',
     vendorName: 'Nombre del proveedor:',
+    cashExpenses: 'Gastos en Efectivo',
+    expense: 'Gasto',
+    addExpense: 'Agregar Gasto',
+    deleteExpenses: 'Eliminar Gastos',
+    expenseName: 'Nombre del gasto:',
     storeName: 'Nombre de la Tienda',
     editStoreName: 'Ingrese el nombre de la tienda:',
     storeNameRequired: 'Ingrese el nombre de la tienda antes de generar la captura:',
@@ -200,7 +227,13 @@ const I18N = {
     forbiddenChars: '⚠ Los nombres no pueden contener < > " & caracteres',
     exportCSV: 'Exportar CSV',
     csvHint: 'Descargue esta semana como archivo .csv para Excel, Google Sheets o Numbers.',
-    csvSaved: '📄 ¡CSV exportado!'
+    csvSaved: '📄 ¡CSV exportado!',
+    cashOnHand: 'Efectivo Disponible',
+    startingCash: 'Efectivo Inicial',
+    autoFill: 'Auto-llenar',
+    cohHint: 'Consejo: Use auto-llenar para traer datos de la semana anterior, o ingrese manualmente.',
+    cohAutoFilled: '✅ Efectivo inicial auto-llenado de la semana anterior',
+    cohNoPrevious: '⚠ No se encontraron datos de semana anterior para auto-llenar'
   }
 };
 
@@ -270,10 +303,11 @@ function saveCurrentWeek() {
     s['__weekStart'] = ws;
     s['__employees'] = employees.slice();
     s['__vendors'] = vendors.slice();
+    s['__cashExpenses'] = cashExpenses.slice();
     localStorage.setItem(weekKey(ws), JSON.stringify(s));
     enforceWeekLimit();
   }
-  saveMeta({ lang: currentLang, lastWeek: ws, employees: employees.slice(), vendors: vendors.slice() });
+  saveMeta({ lang: currentLang, lastWeek: ws, employees: employees.slice(), vendors: vendors.slice(), cashExpenses: cashExpenses.slice() });
 }
 
 function loadState() {
@@ -318,6 +352,11 @@ function applyState(s) {
     saveMeta({ vendors: vendors.slice() });
     buildInvoicesTable();
   }
+  if (s['__cashExpenses'] && Array.isArray(s['__cashExpenses'])) {
+    cashExpenses = s['__cashExpenses'];
+    saveMeta({ cashExpenses: cashExpenses.slice() });
+    buildExpensesTable();
+  }
   clearForm();
   Object.entries(s).forEach(([k, v]) => {
     const el = qsel(k);
@@ -330,6 +369,7 @@ function applyState(s) {
   updateSalesTotals();
   updateHoursTotals();
   updateInvoicesTotals();
+  updateExpensesTotals();
   updateNotesCounter();
 }
 
@@ -345,6 +385,7 @@ function switchToWeek(dateStr) {
     document.getElementById('week-start').value = dateStr;
     clearForm();
     updateDateLabels();
+    tryAutoFillCashOnHand();
   }
   currentWeekDate = dateStr;
   saveMeta({ lastWeek: dateStr });
@@ -830,6 +871,263 @@ function removeVendor(v) {
 }
 
 /* ═══════════════════════════════════════════
+   CASH EXPENSES (dynamic expense items)
+═══════════════════════════════════════════ */
+let cashExpenses = [];  // loaded from storage
+
+function buildExpensesTable() {
+  // Header
+  const headRow = document.getElementById('expenses-head-row');
+  headRow.innerHTML = `<th data-i18n="expense">${t('expense')}</th>`;
+  DAYS().forEach((_, i) => {
+    const th = document.createElement('th');
+    th.textContent = t('daysShort')[i];
+    headRow.appendChild(th);
+  });
+  headRow.innerHTML += `<th data-i18n="totals">${t('totals')}</th>`;
+
+  // Body — one row per expense
+  const tbody = document.getElementById('expenses-body');
+  tbody.innerHTML = '';
+  cashExpenses.forEach(ex => {
+    const tr = document.createElement('tr');
+    let row = `<td class="row-label">${ex}</td>`;
+    DAYS().forEach((_, i) => {
+      row += `<td><input class="inp" type="number" inputmode="decimal" min="0" step="0.01"
+        placeholder="0.00"
+        data-key="exp_${ex}_${i}"
+        data-expense="${ex}"
+        data-day="${i}" /></td>`;
+    });
+    row += `<td class="tot-cell" id="etot-${ex}">$0.00</td>`;
+    tr.innerHTML = row;
+    tbody.appendChild(tr);
+  });
+
+  // Totals row
+  const totRow = document.getElementById('expenses-totals-row');
+  totRow.innerHTML = `<td data-i18n="totals">${t('totals')}</td>`;
+  DAYS().forEach((_, i) => {
+    const td = document.createElement('td');
+    td.className = 'tot-cell';
+    td.id = `exp-day-tot-${i}`;
+    td.textContent = '$0.00';
+    totRow.appendChild(td);
+  });
+  const gtd = document.createElement('td');
+  gtd.className = 'tot-cell tot-grand';
+  gtd.id = 'exp-grand-total';
+  gtd.textContent = '$0.00';
+  totRow.appendChild(gtd);
+
+  renderExpenseActions();
+}
+
+function updateExpensesTotals() {
+  let grand = 0;
+  // Per-expense row totals
+  cashExpenses.forEach(ex => {
+    let eSum = 0;
+    DAYS().forEach((_, i) => {
+      const el = qsel(`exp_${ex}_${i}`);
+      eSum += el ? (parseFloat(el.value) || 0) : 0;
+    });
+    const td = document.getElementById(`etot-${ex}`);
+    if (td) td.textContent = fmt(eSum);
+  });
+  // Per-day column totals
+  DAYS().forEach((_, i) => {
+    let daySum = 0;
+    cashExpenses.forEach(ex => {
+      const el = qsel(`exp_${ex}_${i}`);
+      daySum += el ? (parseFloat(el.value) || 0) : 0;
+    });
+    grand += daySum;
+    const td = document.getElementById(`exp-day-tot-${i}`);
+    if (td) td.textContent = fmt(daySum);
+  });
+  const gt = document.getElementById('exp-grand-total');
+  if (gt) gt.textContent = fmt(grand);
+}
+
+let expenseDeleteMode = false;
+
+function renderExpenseActions() {
+  const bar = document.getElementById('expense-actions');
+  bar.innerHTML = `
+    <button class="btn-emp btn-emp-add" id="btn-add-expense">
+      <i data-lucide="plus" style="width:15px;height:15px;"></i>
+      <span data-i18n="addExpense">${t('addExpense')}</span>
+    </button>
+    <button class="btn-emp btn-emp-del-toggle" id="btn-del-expense-mode">
+      <i data-lucide="minus" style="width:15px;height:15px;"></i>
+      <span data-i18n="deleteExpenses">${t('deleteExpenses')}</span>
+    </button>
+  `;
+  document.getElementById('btn-add-expense').addEventListener('click', addExpense);
+  document.getElementById('btn-del-expense-mode').addEventListener('click', toggleExpenseDeleteMode);
+  lucide.createIcons();
+}
+
+function toggleExpenseDeleteMode() {
+  expenseDeleteMode = !expenseDeleteMode;
+  const tbody = document.getElementById('expenses-body');
+  const bar = document.getElementById('expense-actions');
+
+  if (expenseDeleteMode && cashExpenses.length === 0) {
+    expenseDeleteMode = false;
+    return;
+  }
+
+  if (expenseDeleteMode) {
+    // Add checkbox to each expense row
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const td = document.createElement('td');
+      td.className = 'emp-check-cell';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'emp-check';
+      cb.dataset.expense = tr.querySelector('td').textContent;
+      td.appendChild(cb);
+      tr.insertBefore(td, tr.firstChild);
+    });
+    // Add checkbox header
+    const headRow = document.getElementById('expenses-head-row');
+    const th = document.createElement('th');
+    th.className = 'emp-check-cell';
+    headRow.insertBefore(th, headRow.firstChild);
+    // Add empty cell in totals row
+    const totRow = document.getElementById('expenses-totals-row');
+    const td = document.createElement('td');
+    td.className = 'emp-check-cell';
+    totRow.insertBefore(td, totRow.firstChild);
+
+    // Show confirm-delete button
+    bar.innerHTML = `
+      <button class="btn-emp btn-emp-cancel" id="btn-edel-cancel">
+        <span>${t('cancel')}</span>
+      </button>
+      <button class="btn-emp btn-emp-confirm-del" id="btn-edel-confirm">
+        <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+        <span>${t('deleteExpenses')}</span>
+      </button>
+    `;
+    document.getElementById('btn-edel-cancel').addEventListener('click', exitExpenseDeleteMode);
+    document.getElementById('btn-edel-confirm').addEventListener('click', confirmDeleteExpenses);
+    lucide.createIcons();
+  } else {
+    exitExpenseDeleteMode();
+  }
+}
+
+function exitExpenseDeleteMode() {
+  expenseDeleteMode = false;
+  document.querySelectorAll('#expenses-table .emp-check-cell').forEach(el => el.remove());
+  renderExpenseActions();
+}
+
+function confirmDeleteExpenses() {
+  const checked = Array.from(document.querySelectorAll('#expenses-body .emp-check:checked'));
+  if (checked.length === 0) return;
+  const names = checked.map(cb => cb.dataset.expense);
+  const msg = t('confirmDeleteNames').replace('{names}', names.join(', '));
+  if (!confirm(msg)) return;
+  cashExpenses = cashExpenses.filter(ex => !names.includes(ex));
+  saveMeta({ cashExpenses: cashExpenses.slice() });
+  expenseDeleteMode = false;
+  buildExpensesTable();
+  saveCurrentWeek();
+  updateNotesCounter();
+}
+
+function addExpense() {
+  const name = prompt(t('expenseName'));
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+  if (!isNameSafe(trimmed)) return;
+  if (cashExpenses.includes(trimmed)) return;
+  cashExpenses.push(trimmed);
+  saveMeta({ cashExpenses: cashExpenses.slice() });
+  buildExpensesTable();
+  saveCurrentWeek();
+  updateNotesCounter();
+}
+
+function removeExpense(ex) {
+  cashExpenses = cashExpenses.filter(x => x !== ex);
+  saveMeta({ cashExpenses: cashExpenses.slice() });
+  buildExpensesTable();
+  saveCurrentWeek();
+  updateNotesCounter();
+}
+
+/* ═══════════════════════════════════════════
+   CASH ON HAND – auto-populate from previous week
+═══════════════════════════════════════════ */
+function calcEndingCash(weekData) {
+  if (!weekData) return null;
+  const startCash = parseFloat(weekData['coh_start']) || 0;
+  // Sum cash sales for the week
+  let cashIn = 0;
+  for (let i = 0; i < 7; i++) {
+    cashIn += parseFloat(weekData[`s_${i}_cash`]) || 0;
+  }
+  // Sum cash expenses for the week
+  let cashOut = 0;
+  const expenses = weekData['__cashExpenses'] || [];
+  expenses.forEach(ex => {
+    for (let i = 0; i < 7; i++) {
+      cashOut += parseFloat(weekData[`exp_${ex}_${i}`]) || 0;
+    }
+  });
+  return startCash + cashIn - cashOut;
+}
+
+function findPreviousWeekData(currentDateStr) {
+  const weeks = getSavedWeeks(); // newest first
+  // Find weeks that are before the current week
+  const prior = weeks.filter(w => w < currentDateStr);
+  if (prior.length === 0) return null;
+  // Most recent previous week (prior is sorted newest-first)
+  return loadWeekData(prior[0]);
+}
+
+function autoFillCashOnHand() {
+  const currentDate = document.getElementById('week-start').value;
+  if (!currentDate) return;
+  const prevData = findPreviousWeekData(currentDate);
+  if (!prevData) {
+    showToast(t('cohNoPrevious'));
+    return;
+  }
+  const ending = calcEndingCash(prevData);
+  if (ending !== null) {
+    document.getElementById('coh-start').value = ending.toFixed(2);
+    saveState();
+    showToast(t('cohAutoFilled'));
+  } else {
+    showToast(t('cohNoPrevious'));
+  }
+}
+
+function tryAutoFillCashOnHand() {
+  // Only auto-fill if the field is currently empty
+  const cohEl = document.getElementById('coh-start');
+  if (cohEl && !cohEl.value) {
+    const currentDate = document.getElementById('week-start').value;
+    if (!currentDate) return;
+    const prevData = findPreviousWeekData(currentDate);
+    if (prevData) {
+      const ending = calcEndingCash(prevData);
+      if (ending !== null && ending !== 0) {
+        cohEl.value = ending.toFixed(2);
+        saveState();
+      }
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════
    STORE NAME
 ═══════════════════════════════════════════ */
 function editStoreName() {
@@ -930,7 +1228,11 @@ function maxJsonBytes() {
 
 /* Build QR data WITHOUT notes, return { json, baseSize } */
 function collectDataBase() {
-  const out = { w: document.getElementById('week-start').value, e: employees.slice(), v: vendors.slice(), s: {}, h: {}, inv: {} };
+  const out = { w: document.getElementById('week-start').value, e: employees.slice(), v: vendors.slice(), cx: cashExpenses.slice(), s: {}, h: {}, inv: {}, exp: {} };
+  // Cash on hand
+  const cohEl = document.getElementById('coh-start');
+  const cohVal = cohEl ? (parseFloat(cohEl.value) || 0) : 0;
+  if (cohVal) out.coh = cohVal;
   DAYS().forEach((_, i) => {
     ['sales','cash','cc','dd'].forEach(c => {
       const el = qsel(`s_${i}_${c}`);
@@ -953,6 +1255,13 @@ function collectDataBase() {
       const el = qsel(`inv_${vnd}_${i}`);
       const val = el ? (parseFloat(el.value) || 0) : 0;
       if (val) out.inv[`${vnd}|${i}`] = val;
+    });
+  });
+  cashExpenses.forEach(ex => {
+    DAYS().forEach((_, i) => {
+      const el = qsel(`exp_${ex}_${i}`);
+      const val = el ? (parseFloat(el.value) || 0) : 0;
+      if (val) out.exp[`${ex}|${i}`] = val;
     });
   });
   const baseJson = JSON.stringify(out);
@@ -1097,6 +1406,16 @@ function buildScreenshotClone(qrText) {
   title.textContent = `${storeName} – ${tEn('weekOf')} ${formatDate(dates[0])} – ${formatDate(dates[6])}`;
   wrap.appendChild(title);
 
+  // Cash on Hand line
+  const cohEl = document.getElementById('coh-start');
+  const cohVal = cohEl ? (parseFloat(cohEl.value) || 0) : 0;
+  if (cohVal) {
+    const cohLine = document.createElement('div');
+    cohLine.style.cssText = 'font-size:13px;color:#1e1e2f;margin-bottom:12px;padding:8px 12px;background:#eef0f4;border-radius:8px;display:inline-block;';
+    cohLine.innerHTML = `<strong style="color:#6b7194;text-transform:uppercase;font-size:11px;letter-spacing:.05em;">${tEn('cashOnHand')}:</strong> <span style="font-weight:700;margin-left:6px;">$${cohVal.toFixed(2)}</span>`;
+    wrap.appendChild(cohLine);
+  }
+
   // Clone sales table
   const salesClone = document.getElementById('sales-table').cloneNode(true);
   forceEnglishClone(salesClone);
@@ -1154,6 +1473,27 @@ function buildScreenshotClone(qrText) {
     });
     invClone.querySelectorAll('.emp-check-cell').forEach(el => el.remove());
     wrap.appendChild(invClone);
+  }
+
+  // Clone cash expenses table (if expenses exist) — English title
+  if (cashExpenses.length > 0) {
+    const expTitle = document.createElement('div');
+    expTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
+    expTitle.textContent = tEn('cashExpenses');
+    wrap.appendChild(expTitle);
+
+    const expClone = document.getElementById('expenses-table').cloneNode(true);
+    forceEnglishClone(expClone);
+    styleCloneTable(expClone);
+    expClone.querySelectorAll('input').forEach(inp => {
+      const span = document.createElement('span');
+      const v = parseFloat(inp.value);
+      span.textContent = isNaN(v) ? '–' : '$' + v.toFixed(2);
+      span.style.cssText = 'display:block;text-align:right;font-size:13px;padding:4px;color:#1e1e2f;';
+      inp.parentNode.replaceChild(span, inp);
+    });
+    expClone.querySelectorAll('.emp-check-cell').forEach(el => el.remove());
+    wrap.appendChild(expClone);
   }
 
   // Notes section (if any)
@@ -1244,6 +1584,8 @@ function saveQRDataToStorage(jsonStr) {
   s['__weekStart'] = data.w;
   if (data.e) s['__employees'] = data.e;
   if (data.v) s['__vendors'] = data.v;
+  if (data.cx) s['__cashExpenses'] = data.cx;
+  if (data.coh) s['coh_start'] = data.coh;
   if (data.s) {
     Object.entries(data.s).forEach(([k, v]) => {
       s[`s_${k}`] = v;
@@ -1267,6 +1609,12 @@ function saveQRDataToStorage(jsonStr) {
     Object.entries(data.inv).forEach(([k, v]) => {
       const [vnd, day] = k.split('|');
       s[`inv_${vnd}_${day}`] = v;
+    });
+  }
+  if (data.exp) {
+    Object.entries(data.exp).forEach(([k, v]) => {
+      const [ex, day] = k.split('|');
+      s[`exp_${ex}_${day}`] = v;
     });
   }
   localStorage.setItem(weekKey(data.w), JSON.stringify(s));
@@ -1491,6 +1839,7 @@ function setLanguage(lang) {
   buildSalesTable();
   buildHoursTable();
   buildInvoicesTable();
+  buildExpensesTable();
   // Restore input values
   Object.entries(savedValues).forEach(([k, v]) => {
     const el = qsel(k);
@@ -1501,6 +1850,7 @@ function setLanguage(lang) {
   updateSalesTotals();
   updateHoursTotals();
   updateInvoicesTotals();
+  updateExpensesTotals();
   saveState();
 }
 
@@ -1520,17 +1870,20 @@ function init() {
   if (meta.lang) currentLang = meta.lang;
   if (meta.employees && Array.isArray(meta.employees)) employees = meta.employees;
   if (meta.vendors && Array.isArray(meta.vendors)) vendors = meta.vendors;
+  if (meta.cashExpenses && Array.isArray(meta.cashExpenses)) cashExpenses = meta.cashExpenses;
   if (meta.storeName) storeName = meta.storeName;
   document.getElementById('store-name').textContent = storeName;
   const saved = loadState();
   // Use employees/vendors from saved week data if present (but NOT __lang — meta is authoritative)
   if (saved && saved['__employees'] && Array.isArray(saved['__employees'])) employees = saved['__employees'];
   if (saved && saved['__vendors'] && Array.isArray(saved['__vendors'])) vendors = saved['__vendors'];
+  if (saved && saved['__cashExpenses'] && Array.isArray(saved['__cashExpenses'])) cashExpenses = saved['__cashExpenses'];
 
   // Build tables
   buildSalesTable();
   buildHoursTable();
   buildInvoicesTable();
+  buildExpensesTable();
 
   // Apply language
   document.documentElement.lang = currentLang;
@@ -1573,6 +1926,7 @@ function init() {
         s['__weekStart'] = oldWs;
         s['__employees'] = employees.slice();
         s['__vendors'] = vendors.slice();
+        s['__cashExpenses'] = cashExpenses.slice();
         localStorage.setItem(weekKey(oldWs), JSON.stringify(s));
       }
     }
@@ -1585,6 +1939,7 @@ function init() {
     } else {
       clearForm();
       updateDateLabels();
+      tryAutoFillCashOnHand();
     }
     saveMeta({ lastWeek: newDate });
     renderHistory();
@@ -1599,6 +1954,7 @@ function init() {
       if (col) updateSalesTotals();
       if (e.target.dataset.emp || e.target.dataset.salary) updateHoursTotals();
       if (e.target.dataset.vendor) updateInvoicesTotals();
+      if (e.target.dataset.expense) updateExpensesTotals();
       updateNotesCounter();
     }
   });
@@ -1623,6 +1979,9 @@ function init() {
 
   // Store name edit
   document.getElementById('btn-edit-name').addEventListener('click', editStoreName);
+
+  // Cash on Hand auto-fill button
+  document.getElementById('btn-auto-fill-coh').addEventListener('click', autoFillCashOnHand);
 
   // Export CSV
   document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
@@ -1664,6 +2023,15 @@ function exportCSV() {
   // Header
   rows.push(storeName + ' \u2013 Week of ' + formatDate(dates[0]) + ' \u2013 ' + formatDate(dates[6]));
   rows.push('');
+
+  // --- Cash on Hand ---
+  const cohEl = document.getElementById('coh-start');
+  const cohVal = cohEl ? (parseFloat(cohEl.value) || 0) : 0;
+  if (cohVal) {
+    rows.push('CASH ON HAND');
+    rows.push('Starting Cash,' + cohVal.toFixed(2));
+    rows.push('');
+  }
 
   // --- Sales ---
   rows.push('DAILY SALES');
@@ -1733,6 +2101,23 @@ function exportCSV() {
         return val.toFixed(2);
       });
       rows.push([csvEscape(v), ...vals, vTotal.toFixed(2)].join(','));
+    });
+  }
+
+  // --- Cash Expenses ---
+  if (cashExpenses.length > 0) {
+    rows.push('');
+    rows.push('CASH EXPENSES');
+    rows.push(['Expense', ...enDays, 'Total'].map(csvEscape).join(','));
+    cashExpenses.forEach(ex => {
+      let exTotal = 0;
+      const vals = enDays.map((_, i) => {
+        const el = qsel(`exp_${ex}_${i}`);
+        const val = el ? (parseFloat(el.value) || 0) : 0;
+        exTotal += val;
+        return val.toFixed(2);
+      });
+      rows.push([csvEscape(ex), ...vals, exTotal.toFixed(2)].join(','));
     });
   }
 
