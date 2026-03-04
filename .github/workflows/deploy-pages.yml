@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - 'copilot/**'
-      - 'feature/**'
   workflow_dispatch:
 
 permissions:
