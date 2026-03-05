@@ -911,8 +911,8 @@ function toggleDeleteMode() {
 
 function exitDeleteMode() {
   deleteMode = false;
-  // Remove checkbox cells
-  document.querySelectorAll('.emp-check-cell').forEach(el => el.remove());
+  // Remove checkbox cells — scoped to hours table only
+  document.querySelectorAll('#hours-table .emp-check-cell').forEach(el => el.remove());
   renderEmployeeActions();
 }
 
@@ -2536,6 +2536,13 @@ function init() {
 
   // Auto-save + totals on input
   document.addEventListener('input', e => {
+    // Enforce 2 decimal places on monetary inputs (step="0.01")
+    if (e.target.type === 'number' && e.target.step === '0.01' && e.target.value !== '') {
+      const dot = e.target.value.indexOf('.');
+      if (dot >= 0 && e.target.value.length - dot - 1 > 2) {
+        e.target.value = parseFloat(e.target.value).toFixed(2);
+      }
+    }
     if (e.target.matches('[data-key]')) {
       saveState();
       const col = e.target.dataset.col;
