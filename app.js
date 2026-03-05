@@ -465,9 +465,8 @@ function switchToWeek(dateStr) {
   if (data) {
     applyState(data);
   } else {
-    // New blank week
+    // New blank week — keep current salesSources so user-added sources carry over
     document.getElementById('week-start').value = dateStr;
-    salesSources = DEFAULT_SALES_SOURCES.slice();
     buildSalesTable();
     cashExpenses = [];
     buildExpensesTable();
@@ -495,7 +494,6 @@ function deleteWeek(dateStr) {
     if (existing) {
       applyState(existing);
     } else {
-      salesSources = DEFAULT_SALES_SOURCES.slice();
       buildSalesTable();
       cashExpenses = [];
       buildExpensesTable();
@@ -2524,7 +2522,6 @@ function init() {
     if (existing) {
       applyState(existing);
     } else {
-      salesSources = DEFAULT_SALES_SOURCES.slice();
       buildSalesTable();
       clearForm();
       updateDateLabels();
