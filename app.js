@@ -8,7 +8,7 @@
 ═══════════════════════════════════════════ */
 let employees = [];  // dynamic, loaded from storage
 let salesSources = [];  // dynamic daily-sales sources, loaded from storage
-const DEFAULT_SALES_SOURCES = ['Cash', 'Credit Card', 'DoorDash / Uber'];
+const DEFAULT_SALES_SOURCES = ['Online', 'Cash', 'Credit Card'];
 const FIXED_SALES_SOURCES = ['Cash']; // cannot be removed
 let currentWeekDate = '';  // tracks which week is displayed, for save-on-switch
 let storeName = 'Store Name';  // editable, saved to meta
@@ -32,7 +32,7 @@ const I18N = {
     totalSales: 'Total Sales',
     cash: 'Cash',
     creditCard: 'Credit Card',
-    doordashUber: 'DoorDash / Uber',
+    online: 'Online',
     totals: 'Totals',
     employee: 'Employee',
     totalHrs: 'Total hrs',
@@ -112,7 +112,7 @@ const I18N = {
     totalSales: '总销售额',
     cash: '现金',
     creditCard: '信用卡',
-    doordashUber: 'DoorDash / Uber',
+    online: '在线',
     totals: '合计',
     employee: '员工',
     totalHrs: '总工时',
@@ -192,7 +192,7 @@ const I18N = {
     totalSales: 'Ventas Totales',
     cash: 'Efectivo',
     creditCard: 'Tarjeta de Crédito',
-    doordashUber: 'DoorDash / Uber',
+    online: 'En línea',
     totals: 'Totales',
     employee: 'Empleado',
     totalHrs: 'Total horas',
@@ -423,7 +423,7 @@ function applyState(s) {
   } else {
     // Old format — migrate keys to new source names
     salesSources = DEFAULT_SALES_SOURCES.slice();
-    const keyMap = { 'cash': 'Cash', 'cc': 'Credit Card', 'dd': 'DoorDash / Uber' };
+    const keyMap = { 'cash': 'Cash', 'cc': 'Credit Card', 'dd': 'Online' };
     for (let i = 0; i < 7; i++) {
       for (const [oldKey, newName] of Object.entries(keyMap)) {
         const oldDataKey = `s_${i}_${oldKey}`;
