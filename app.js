@@ -7,6 +7,9 @@
    CONFIG
 ═══════════════════════════════════════════ */
 let employees = [];  // dynamic, loaded from storage
+let salesSources = [];  // dynamic daily-sales sources, loaded from storage
+const DEFAULT_SALES_SOURCES = ['Cash', 'Credit Card', 'DoorDash / Uber'];
+const FIXED_SALES_SOURCES = ['Cash']; // cannot be removed
 let currentWeekDate = '';  // tracks which week is displayed, for save-on-switch
 let storeName = 'Store Name';  // editable, saved to meta
 const WEEK_PREFIX = 'edr_week_';    // per-week keys: edr_week_2026-02-23
@@ -93,7 +96,11 @@ const I18N = {
     cohHint: 'Tip: Use auto-fill to pull from the most recent previous week, or enter manually.',
     cohAutoFilled: '✅ Starting cash auto-filled from previous week',
     cohNoPrevious: '⚠ No previous week data found to auto-fill from',
-    monthlyInventory: 'Monthly Inventory'
+    monthlyInventory: 'Monthly Inventory',
+    addSalesSource: 'Add Sales Source',
+    deleteSalesSources: 'Delete Sales Sources',
+    salesSourceName: 'Sales source name:',
+    salesSource: 'Source'
   },
   zh: {
     subtitle: 'Easy Daily Report',
@@ -169,7 +176,11 @@ const I18N = {
     cohHint: '提示：使用自动填充从最近的上一周提取，或手动输入。',
     cohAutoFilled: '✅ 期初现金已从上周自动填充',
     cohNoPrevious: '⚠ 未找到可自动填充的上周数据',
-    monthlyInventory: '月度库存'
+    monthlyInventory: '月度库存',
+    addSalesSource: '添加销售来源',
+    deleteSalesSources: '删除销售来源',
+    salesSourceName: '销售来源名称：',
+    salesSource: '来源'
   },
   es: {
     subtitle: 'Easy Daily Report',
@@ -245,7 +256,11 @@ const I18N = {
     cohHint: 'Consejo: Use auto-llenar para traer datos de la semana anterior, o ingrese manualmente.',
     cohAutoFilled: '✅ Efectivo inicial auto-llenado de la semana anterior',
     cohNoPrevious: '⚠ No se encontraron datos de semana anterior para auto-llenar',
-    monthlyInventory: 'Inventario Mensual'
+    monthlyInventory: 'Inventario Mensual',
+    addSalesSource: 'Agregar Fuente de Venta',
+    deleteSalesSources: 'Eliminar Fuentes de Venta',
+    salesSourceName: 'Nombre de la fuente de venta:',
+    salesSource: 'Fuente'
   }
 };
 
@@ -342,10 +357,11 @@ function saveCurrentWeek() {
     s['__employees'] = employees.slice();
     s['__vendors'] = vendors.slice();
     s['__cashExpenses'] = cashExpenses.slice();
+    s['__salesSources'] = salesSources.slice();
     localStorage.setItem(weekKey(ws), JSON.stringify(s));
     enforceWeekLimit();
   }
-  saveMeta({ lang: currentLang, lastWeek: ws, employees: employees.slice(), vendors: vendors.slice() });
+  saveMeta({ lang: currentLang, lastWeek: ws, employees: employees.slice(), vendors: vendors.slice(), salesSources: salesSources.slice() });
 }
 
 function loadState() {
@@ -397,6 +413,29 @@ function applyState(s) {
     saveMeta({ vendors: vendors.slice() });
     buildInvoicesTable();
   }
+  // Sales sources
+  if (s['__salesSources'] && Array.isArray(s['__salesSources'])) {
+    salesSources = s['__salesSources'];
+    // Ensure fixed sources are always present
+    FIXED_SALES_SOURCES.forEach(f => {
+      if (!salesSources.includes(f)) salesSources.unshift(f);
+    });
+  } else {
+    // Old format — migrate keys to new source names
+    salesSources = DEFAULT_SALES_SOURCES.slice();
+    const keyMap = { 'cash': 'Cash', 'cc': 'Credit Card', 'dd': 'DoorDash / Uber' };
+    for (let i = 0; i < 7; i++) {
+      for (const [oldKey, newName] of Object.entries(keyMap)) {
+        const oldDataKey = `s_${i}_${oldKey}`;
+        const newDataKey = `s_${i}_${newName}`;
+        if (s[oldDataKey] && !s[newDataKey]) {
+          s[newDataKey] = s[oldDataKey];
+        }
+      }
+    }
+  }
+  saveMeta({ salesSources: salesSources.slice() });
+  buildSalesTable();
   cashExpenses = Array.isArray(s['__cashExpenses']) ? s['__cashExpenses'] : [];
   buildExpensesTable();
   clearForm();
@@ -428,6 +467,8 @@ function switchToWeek(dateStr) {
   } else {
     // New blank week
     document.getElementById('week-start').value = dateStr;
+    salesSources = DEFAULT_SALES_SOURCES.slice();
+    buildSalesTable();
     cashExpenses = [];
     buildExpensesTable();
     clearForm();
@@ -454,6 +495,8 @@ function deleteWeek(dateStr) {
     if (existing) {
       applyState(existing);
     } else {
+      salesSources = DEFAULT_SALES_SOURCES.slice();
+      buildSalesTable();
       cashExpenses = [];
       buildExpensesTable();
       clearForm();
@@ -500,12 +543,12 @@ function getWeekDates() {
 }
 
 /* ═══════════════════════════════════════════
-   BUILD SALES TABLE
+   BUILD SALES TABLE (dynamic sources)
 ═══════════════════════════════════════════ */
 function buildSalesTable() {
   // Header: blank + days + Totals
   const headRow = document.getElementById('sales-head-row');
-  headRow.innerHTML = '<th></th>';
+  headRow.innerHTML = `<th data-i18n="salesSource">${t('salesSource')}</th>`;
   DAYS().forEach((_, i) => {
     const th = document.createElement('th');
     th.innerHTML = `<div>${t('daysShort')[i]}</div><div class="day-date" data-day-date="${i}"></div>`;
@@ -513,28 +556,22 @@ function buildSalesTable() {
   });
   headRow.innerHTML += `<th data-i18n="totals">${t('totals')}</th>`;
 
-  // Rows: Sales, Cash, Credit Card, DoorDash/Uber
-  const categories = [
-    { key: 'sales', label: 'totalSales' },
-    { key: 'cash',  label: 'cash' },
-    { key: 'cc',    label: 'creditCard' },
-    { key: 'dd',    label: 'doordashUber' }
-  ];
-
+  // Body — one row per sales source
   const tbody = document.getElementById('sales-body');
   tbody.innerHTML = '';
 
-  categories.forEach(cat => {
+  salesSources.forEach(src => {
     const tr = document.createElement('tr');
-    let row = `<td class="row-label" data-i18n="${cat.label}">${t(cat.label)}</td>`;
+    let row = `<td class="row-label">${src}</td>`;
     DAYS().forEach((_, i) => {
       row += `<td><input class="inp" type="number" inputmode="decimal" min="0" step="0.01"
         placeholder="0.00"
-        data-key="s_${i}_${cat.key}"
-        data-col="${cat.key}"
+        data-key="s_${i}_${src}"
+        data-col="sales"
+        data-sales-source="${src}"
         data-row="${i}" /></td>`;
     });
-    row += `<td class="tot-cell" id="tot-${cat.key}">$0.00</td>`;
+    row += `<td class="tot-cell" data-stot="${src}">$0.00</td>`;
     tr.innerHTML = row;
     tbody.appendChild(tr);
   });
@@ -550,6 +587,144 @@ function buildSalesTable() {
   totTr.innerHTML = totRow;
   tbody.appendChild(totTr);
 
+  renderSalesActions();
+}
+
+/* ═══════════════════════════════════════════
+   SALES SOURCE MANAGEMENT (add / remove)
+═══════════════════════════════════════════ */
+let salesDeleteMode = false;
+
+function renderSalesActions() {
+  const bar = document.getElementById('sales-actions');
+  if (!bar) return;
+  bar.innerHTML = `
+    <button class="btn-emp btn-emp-add" id="btn-add-sales-source">
+      <i data-lucide="plus" style="width:15px;height:15px;"></i>
+      <span data-i18n="addSalesSource">${t('addSalesSource')}</span>
+    </button>
+    <button class="btn-emp btn-emp-del-toggle" id="btn-del-sales-source-mode">
+      <i data-lucide="minus" style="width:15px;height:15px;"></i>
+      <span data-i18n="deleteSalesSources">${t('deleteSalesSources')}</span>
+    </button>
+  `;
+  document.getElementById('btn-add-sales-source').addEventListener('click', addSalesSource);
+  document.getElementById('btn-del-sales-source-mode').addEventListener('click', toggleSalesDeleteMode);
+  lucide.createIcons();
+}
+
+function addSalesSource() {
+  const name = prompt(t('salesSourceName'));
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+  if (!isNameSafe(trimmed)) return;
+  if (salesSources.includes(trimmed)) return;
+  saveCurrentWeek();
+  salesSources.push(trimmed);
+  saveMeta({ salesSources: salesSources.slice() });
+  const data = loadWeekData(document.getElementById('week-start').value);
+  buildSalesTable();
+  if (data) {
+    Object.entries(data).forEach(([k, v]) => {
+      const el = qsel(k);
+      if (el) el.value = v;
+    });
+  }
+  updateSalesTotals();
+  updateCashOnHand();
+  saveCurrentWeek();
+  updateNotesCounter();
+}
+
+function toggleSalesDeleteMode() {
+  salesDeleteMode = !salesDeleteMode;
+  const tbody = document.getElementById('sales-body');
+  const bar = document.getElementById('sales-actions');
+
+  // Only removable sources (exclude fixed and totals row)
+  const removable = salesSources.filter(s => !FIXED_SALES_SOURCES.includes(s));
+  if (salesDeleteMode && removable.length === 0) {
+    salesDeleteMode = false;
+    return;
+  }
+
+  if (salesDeleteMode) {
+    // Add checkbox to each source row (skip fixed sources and totals row)
+    const rows = tbody.querySelectorAll('tr:not(.totals-row)');
+    rows.forEach(tr => {
+      const label = tr.querySelector('td').textContent;
+      const td = document.createElement('td');
+      td.className = 'emp-check-cell';
+      if (FIXED_SALES_SOURCES.includes(label)) {
+        // No checkbox for fixed sources — just an empty cell
+        td.innerHTML = '';
+      } else {
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'emp-check';
+        cb.dataset.salesSource = label;
+        td.appendChild(cb);
+      }
+      tr.insertBefore(td, tr.firstChild);
+    });
+    // Totals row — empty cell
+    const totRow = tbody.querySelector('tr.totals-row');
+    if (totRow) {
+      const td = document.createElement('td');
+      td.className = 'emp-check-cell';
+      totRow.insertBefore(td, totRow.firstChild);
+    }
+    // Header
+    const headRow = document.getElementById('sales-head-row');
+    const th = document.createElement('th');
+    th.className = 'emp-check-cell';
+    headRow.insertBefore(th, headRow.firstChild);
+
+    bar.innerHTML = `
+      <button class="btn-emp btn-emp-cancel" id="btn-sdel-cancel">
+        <span>${t('cancel')}</span>
+      </button>
+      <button class="btn-emp btn-emp-confirm-del" id="btn-sdel-confirm">
+        <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+        <span>${t('deleteSalesSources')}</span>
+      </button>
+    `;
+    document.getElementById('btn-sdel-cancel').addEventListener('click', exitSalesDeleteMode);
+    document.getElementById('btn-sdel-confirm').addEventListener('click', confirmDeleteSalesSources);
+    lucide.createIcons();
+  } else {
+    exitSalesDeleteMode();
+  }
+}
+
+function exitSalesDeleteMode() {
+  salesDeleteMode = false;
+  document.querySelectorAll('#sales-table .emp-check-cell').forEach(el => el.remove());
+  renderSalesActions();
+}
+
+function confirmDeleteSalesSources() {
+  const checked = Array.from(document.querySelectorAll('#sales-body .emp-check:checked'));
+  if (checked.length === 0) return;
+  const names = checked.map(cb => cb.dataset.salesSource);
+  const msg = t('confirmDeleteNames').replace('{names}', names.join(', '));
+  if (!confirm(msg)) return;
+  saveCurrentWeek();
+  salesSources = salesSources.filter(s => !names.includes(s));
+  saveMeta({ salesSources: salesSources.slice() });
+  salesDeleteMode = false;
+  const data = loadWeekData(document.getElementById('week-start').value);
+  buildSalesTable();
+  if (data) {
+    Object.entries(data).forEach(([k, v]) => {
+      const el = qsel(k);
+      if (el) el.value = v;
+    });
+  }
+  updateSalesTotals();
+  updateCashOnHand();
+  saveCurrentWeek();
+  updateNotesCounter();
 }
 
 /* ═══════════════════════════════════════════
@@ -1345,17 +1520,21 @@ function calcEndingCash(weekData) {
   const startCash = parseFloat(weekData['coh_start']) || 0;
   const expenses = weekData['__cashExpenses'] || [];
 
-  // Walk each day forward: cohBefore[0] = startCash, cohAfter[i] = cohBefore[i] - expDay[i], cohBefore[i+1] = cohAfter[i]
+  // Walk each day forward: cohAfter[i] = cohBefore[i] + cashIncome[i] - expDay[i]
   let cohBefore = startCash;
   for (let i = 0; i < 7; i++) {
+    // Cash income: try new format first, fall back to old
+    const cashKey = weekData['__salesSources'] ? `s_${i}_Cash` : `s_${i}_cash`;
+    const cashIncome = parseFloat(weekData[cashKey]) || 0;
+
     let dayExp = 0;
     expenses.forEach(ex => {
       dayExp += parseFloat(weekData[`exp_${ex}_${i}`]) || 0;
     });
-    const cohAfter = cohBefore - dayExp;
-    cohBefore = cohAfter; // next day's "before" = this day's "after"
+    const cohAfter = cohBefore + cashIncome - dayExp;
+    cohBefore = cohAfter;
   }
-  return cohBefore; // final day's "after"
+  return cohBefore;
 }
 
 function findLatestAvailableWeekData(currentDateStr) {
@@ -1392,7 +1571,7 @@ function autoFillCashOnHand() {
  *
  * COH before calc [day 0] = coh_start input
  * COH before calc [day i] = COH [day i-1]  (i.e. previous day's "after")
- * COH [day i] = COH before calc [day i] – cash expenses total [day i]
+ * COH [day i] = COH before calc [day i] + cash sales [day i] – cash expenses total [day i]
  */
 function updateCashOnHand() {
   const cohStartEl = document.getElementById('coh-start');
@@ -1404,6 +1583,10 @@ function updateCashOnHand() {
     const cell = document.getElementById(`coh-before-${i}`);
     if (cell) cell.textContent = fmt(cohBefore);
 
+    // Cash income from "Cash" sales source for this day
+    const cashEl = qsel(`s_${i}_Cash`);
+    const cashIncome = cashEl ? (parseFloat(cashEl.value) || 0) : 0;
+
     // Get expense total for this day
     let dayExp = 0;
     cashExpenses.forEach(ex => {
@@ -1411,7 +1594,7 @@ function updateCashOnHand() {
       dayExp += el ? (parseFloat(el.value) || 0) : 0;
     });
 
-    const cohAfter = cohBefore - dayExp;
+    const cohAfter = cohBefore + cashIncome - dayExp;
 
     // Write "Cash on Hand" in expenses table
     const afterCell = document.getElementById(`coh-after-${i}`);
@@ -1439,23 +1622,22 @@ function editStoreName() {
 function fmt(n) { return '$' + n.toFixed(2); }
 
 function updateSalesTotals() {
-  const cols = ['sales','cash','cc','dd'];
-  // Row totals (each category across all days)
-  cols.forEach(c => {
+  // Row totals (each source across all days)
+  salesSources.forEach(src => {
     let sum = 0;
     DAYS().forEach((_, i) => {
-      const el = qsel(`s_${i}_${c}`);
+      const el = qsel(`s_${i}_${src}`);
       sum += el ? (parseFloat(el.value) || 0) : 0;
     });
-    const td = document.getElementById(`tot-${c}`);
+    const td = document.querySelector(`[data-stot="${CSS.escape(src)}"]`);
     if (td) td.textContent = fmt(sum);
   });
-  // Column totals (each day across all categories)
+  // Column totals (each day across all sources)
   let grand = 0;
   DAYS().forEach((_, i) => {
     let daySum = 0;
-    cols.forEach(c => {
-      const el = qsel(`s_${i}_${c}`);
+    salesSources.forEach(src => {
+      const el = qsel(`s_${i}_${src}`);
       daySum += el ? (parseFloat(el.value) || 0) : 0;
     });
     grand += daySum;
@@ -1522,17 +1704,17 @@ function maxJsonBytes() {
 
 /* Build QR data WITHOUT notes, return { json, baseSize } */
 function collectDataBase() {
-  const out = { w: document.getElementById('week-start').value, e: employees.slice(), v: vendors.slice(), cx: cashExpenses.slice(), s: {}, h: {}, inv: {}, exp: {} };
+  const out = { w: document.getElementById('week-start').value, e: employees.slice(), v: vendors.slice(), cx: cashExpenses.slice(), ss: salesSources.slice(), s: {}, h: {}, inv: {}, exp: {} };
   // Cash on hand
   const cohEl = document.getElementById('coh-start');
   const cohRaw = cohEl ? cohEl.value : '';
   const cohVal = cohRaw === '' ? null : (parseFloat(cohRaw) || 0);
   if (cohVal !== null) out.coh = cohVal;
   DAYS().forEach((_, i) => {
-    ['sales','cash','cc','dd'].forEach(c => {
-      const el = qsel(`s_${i}_${c}`);
+    salesSources.forEach(src => {
+      const el = qsel(`s_${i}_${src}`);
       const v = el ? (parseFloat(el.value) || 0) : 0;
-      if (v) out.s[`${i}_${c}`] = v;
+      if (v) out.s[`${i}_${src}`] = v;
     });
   });
   employees.forEach(emp => {
@@ -1952,6 +2134,7 @@ function saveQRDataToStorage(jsonStr) {
   if (data.e) s['__employees'] = sanitizeList(data.e);
   if (data.v) s['__vendors'] = sanitizeList(data.v);
   if (data.cx) s['__cashExpenses'] = sanitizeList(data.cx);
+  if (data.ss) s['__salesSources'] = sanitizeList(data.ss);
   if (Object.prototype.hasOwnProperty.call(data, 'coh')) s['coh_start'] = data.coh;
   if (data.s) {
     Object.entries(data.s).forEach(([k, v]) => {
@@ -2139,9 +2322,21 @@ function renderHistory() {
 function calcWeekTotalSales(data) {
   if (!data) return 0;
   let total = 0;
-  for (let i = 0; i < 7; i++) {
-    const key = `s_${i}_sales`;
-    if (data[key]) total += parseFloat(data[key]) || 0;
+  if (data['__salesSources'] && Array.isArray(data['__salesSources'])) {
+    // New format: sum all sources
+    const sources = data['__salesSources'];
+    for (let i = 0; i < 7; i++) {
+      sources.forEach(src => {
+        const key = `s_${i}_${src}`;
+        if (data[key]) total += parseFloat(data[key]) || 0;
+      });
+    }
+  } else {
+    // Old format: use the manual total sales entries
+    for (let i = 0; i < 7; i++) {
+      const key = `s_${i}_sales`;
+      if (data[key]) total += parseFloat(data[key]) || 0;
+    }
   }
   return total;
 }
@@ -2247,12 +2442,27 @@ function init() {
   if (meta.lang) currentLang = meta.lang;
   if (meta.employees && Array.isArray(meta.employees)) employees = meta.employees;
   if (meta.vendors && Array.isArray(meta.vendors)) vendors = meta.vendors;
+  if (meta.salesSources && Array.isArray(meta.salesSources)) {
+    salesSources = meta.salesSources;
+  } else {
+    salesSources = DEFAULT_SALES_SOURCES.slice();
+  }
+  // Ensure fixed sources are always present
+  FIXED_SALES_SOURCES.forEach(f => {
+    if (!salesSources.includes(f)) salesSources.unshift(f);
+  });
   if (meta.storeName) storeName = meta.storeName;
   document.getElementById('store-name').textContent = storeName;
   const saved = loadState();
-  // Use employees/vendors from saved week data if present (but NOT __lang — meta is authoritative)
+  // Use employees/vendors/salesSources from saved week data if present
   if (saved && saved['__employees'] && Array.isArray(saved['__employees'])) employees = saved['__employees'];
   if (saved && saved['__vendors'] && Array.isArray(saved['__vendors'])) vendors = saved['__vendors'];
+  if (saved && saved['__salesSources'] && Array.isArray(saved['__salesSources'])) {
+    salesSources = saved['__salesSources'];
+    FIXED_SALES_SOURCES.forEach(f => {
+      if (!salesSources.includes(f)) salesSources.unshift(f);
+    });
+  }
 
   // Build tables
   buildSalesTable();
@@ -2303,6 +2513,7 @@ function init() {
         s['__employees'] = employees.slice();
         s['__vendors'] = vendors.slice();
         s['__cashExpenses'] = cashExpenses.slice();
+        s['__salesSources'] = salesSources.slice();
         localStorage.setItem(weekKey(oldWs), JSON.stringify(s));
       }
     }
@@ -2313,6 +2524,8 @@ function init() {
     if (existing) {
       applyState(existing);
     } else {
+      salesSources = DEFAULT_SALES_SOURCES.slice();
+      buildSalesTable();
       clearForm();
       updateDateLabels();
     }
@@ -2326,7 +2539,7 @@ function init() {
     if (e.target.matches('[data-key]')) {
       saveState();
       const col = e.target.dataset.col;
-      if (col) updateSalesTotals();
+      if (col) { updateSalesTotals(); updateCashOnHand(); }
       if (e.target.dataset.emp || e.target.dataset.salary) updateHoursTotals();
       if (e.target.dataset.vendor) updateInvoicesTotals();
       if (e.target.dataset.expense) { updateExpensesTotals(); updateCashOnHand(); }
@@ -2414,29 +2627,23 @@ function exportCSV() {
   const salesHeader = ['', ...enDays.map((d, i) => d + ' ' + formatDate(dates[i])), 'Total'];
   rows.push(salesHeader.map(csvEscape).join(','));
 
-  const cats = [
-    { key: 'sales', label: 'Total Sales' },
-    { key: 'cash', label: 'Cash' },
-    { key: 'cc', label: 'Credit Card' },
-    { key: 'dd', label: 'DoorDash / Uber' }
-  ];
-  cats.forEach(cat => {
+  salesSources.forEach(src => {
     let total = 0;
     const vals = enDays.map((_, i) => {
-      const el = qsel(`s_${i}_${cat.key}`);
+      const el = qsel(`s_${i}_${src}`);
       const v = el ? (parseFloat(el.value) || 0) : 0;
       total += v;
       return v.toFixed(2);
     });
-    rows.push([csvEscape(cat.label), ...vals, total.toFixed(2)].join(','));
+    rows.push([csvEscape(src), ...vals, total.toFixed(2)].join(','));
   });
 
   // Day totals
   let grandTotal = 0;
   const dayTots = enDays.map((_, i) => {
     let daySum = 0;
-    cats.forEach(cat => {
-      const el = qsel(`s_${i}_${cat.key}`);
+    salesSources.forEach(src => {
+      const el = qsel(`s_${i}_${src}`);
       daySum += el ? (parseFloat(el.value) || 0) : 0;
     });
     grandTotal += daySum;
@@ -2451,12 +2658,15 @@ function exportCSV() {
     const cohAfterVals = [];
     enDays.forEach((_, i) => {
       cohBeforeVals.push(cohBefore.toFixed(2));
+      // Cash income from Cash sales source
+      const cashEl = qsel(`s_${i}_Cash`);
+      const cashIncome = cashEl ? (parseFloat(cashEl.value) || 0) : 0;
       let dayExp = 0;
       cashExpenses.forEach(ex => {
         const el = qsel(`exp_${ex}_${i}`);
         dayExp += el ? (parseFloat(el.value) || 0) : 0;
       });
-      const cohAfter = cohBefore - dayExp;
+      const cohAfter = cohBefore + cashIncome - dayExp;
       cohAfterVals.push(cohAfter.toFixed(2));
       cohBefore = cohAfter;
     });
