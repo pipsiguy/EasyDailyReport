@@ -342,26 +342,22 @@ function loadWeekData(dateStr) {
   catch(e) { return null; }
 }
 
-function saveCurrentWeek() {
-  const ws = document.getElementById('week-start').value;
+function saveCurrentWeek(weekStart) {
+  const ws = weekStart || document.getElementById('week-start').value;
   if (!ws) return;
 
   const s = {};
   document.querySelectorAll('[data-key]').forEach(el => {
     if (el.value && el.value !== '0') s[el.dataset.key] = el.value;
   });
-  // Save if there's any data, custom sources, or if a week entry already exists (to allow clearing)
-  const customSources = JSON.stringify(salesSources) !== JSON.stringify(DEFAULT_SALES_SOURCES);
-  const hasData = Object.keys(s).length > 0 || customSources || localStorage.getItem(weekKey(ws)) !== null;
-  if (hasData) {
-    s['__weekStart'] = ws;
-    s['__employees'] = employees.slice();
-    s['__vendors'] = vendors.slice();
-    s['__cashExpenses'] = cashExpenses.slice();
-    s['__salesSources'] = salesSources.slice();
-    localStorage.setItem(weekKey(ws), JSON.stringify(s));
-    enforceWeekLimit();
-  }
+  // Always save week state so each week preserves its own vendors, employees, and sales sources
+  s['__weekStart'] = ws;
+  s['__employees'] = employees.slice();
+  s['__vendors'] = vendors.slice();
+  s['__cashExpenses'] = cashExpenses.slice();
+  s['__salesSources'] = salesSources.slice();
+  localStorage.setItem(weekKey(ws), JSON.stringify(s));
+  enforceWeekLimit();
   saveMeta({ lang: currentLang, lastWeek: ws, employees: employees.slice(), vendors: vendors.slice(), salesSources: salesSources.slice() });
 }
 
@@ -406,12 +402,10 @@ function applyState(s) {
   // If saved state has employees, use them and rebuild table
   if (s['__employees'] && Array.isArray(s['__employees'])) {
     employees = s['__employees'];
-    saveMeta({ employees: employees.slice() });
     buildHoursTable();
   }
   if (s['__vendors'] && Array.isArray(s['__vendors'])) {
     vendors = s['__vendors'];
-    saveMeta({ vendors: vendors.slice() });
     buildInvoicesTable();
   }
   // Sales sources
@@ -435,7 +429,6 @@ function applyState(s) {
       }
     }
   }
-  saveMeta({ salesSources: salesSources.slice() });
   buildSalesTable();
   cashExpenses = Array.isArray(s['__cashExpenses']) ? s['__cashExpenses'] : [];
   buildExpensesTable();
@@ -468,6 +461,7 @@ function switchToWeek(dateStr) {
   } else {
     // New blank week — keep current salesSources so user-added sources carry over
     document.getElementById('week-start').value = dateStr;
+    salesSources = DEFAULT_SALES_SOURCES.slice();
     buildSalesTable();
     cashExpenses = [];
     buildExpensesTable();
@@ -495,6 +489,7 @@ function deleteWeek(dateStr) {
     if (existing) {
       applyState(existing);
     } else {
+      salesSources = DEFAULT_SALES_SOURCES.slice();
       buildSalesTable();
       cashExpenses = [];
       buildExpensesTable();
@@ -620,7 +615,6 @@ function addSalesSource() {
   if (salesSources.includes(trimmed)) return;
   saveCurrentWeek();
   salesSources.push(trimmed);
-  saveMeta({ salesSources: salesSources.slice() });
   const data = loadWeekData(document.getElementById('week-start').value);
   buildSalesTable();
   if (data) {
@@ -710,7 +704,6 @@ function confirmDeleteSalesSources() {
   if (!confirm(msg)) return;
   saveCurrentWeek();
   salesSources = salesSources.filter(s => !names.includes(s));
-  saveMeta({ salesSources: salesSources.slice() });
   salesDeleteMode = false;
   const data = loadWeekData(document.getElementById('week-start').value);
   buildSalesTable();
@@ -1240,7 +1233,6 @@ function confirmDeleteVendors() {
   if (!confirm(msg)) return;
   saveCurrentWeek();
   vendors = vendors.filter(v => !names.includes(v));
-  saveMeta({ vendors: vendors.slice() });
   vendorDeleteMode = false;
   const data = loadWeekData(document.getElementById('week-start').value);
   buildInvoicesTable();
@@ -1265,7 +1257,6 @@ function addVendor() {
   // Save current data before rebuilding
   saveCurrentWeek();
   vendors.push(trimmed);
-  saveMeta({ vendors: vendors.slice() });
   // Rebuild and restore
   const data = loadWeekData(document.getElementById('week-start').value);
   buildInvoicesTable();
@@ -1284,7 +1275,6 @@ function addVendor() {
 function removeVendor(v) {
   saveCurrentWeek();
   vendors = vendors.filter(x => x !== v);
-  saveMeta({ vendors: vendors.slice() });
   const data = loadWeekData(document.getElementById('week-start').value);
   buildInvoicesTable();
   if (data) {
@@ -2502,7 +2492,7 @@ function init() {
 
     // Save the old week under the previous date
     if (currentWeekDate) {
-      saveCurrentWeek();
+      saveCurrentWeek(currentWeekDate);
     }
 
     const newDate = document.getElementById('week-start').value;
@@ -2511,6 +2501,7 @@ function init() {
     if (existing) {
       applyState(existing);
     } else {
+      salesSources = DEFAULT_SALES_SOURCES.slice();
       buildSalesTable();
       clearForm();
       updateDateLabels();

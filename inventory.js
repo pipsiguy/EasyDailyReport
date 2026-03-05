@@ -546,7 +546,11 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-let CATEGORIES = loadCategoriesConfig();
+let CATEGORIES = loadCategoriesConfig(); // Used only for the first-ever month
+
+function cloneCategories(cats) {
+  return JSON.parse(JSON.stringify(cats));
+}
 
 /* ═══════════════════════════════════════════
    STATE / STORAGE
@@ -580,6 +584,8 @@ function saveCurrentMonth() {
   const ms = document.getElementById('inv-month').value;
   if (!ms) return;
   const data = { __month: ms };
+  // Save this month's categories/items structure
+  data.__categories = cloneCategories(CATEGORIES);
   document.querySelectorAll('.inv-qty').forEach(el => {
     const q = parseFloat(el.value);
     if (q) data[el.dataset.itemKey] = q;
@@ -1150,6 +1156,9 @@ function clearAllQuantities() {
 
 function applyMonthData(data) {
   clearForm();
+  if (data.__categories && Array.isArray(data.__categories)) {
+    CATEGORIES = cloneCategories(data.__categories);
+  }
   if (data.__month) document.getElementById('inv-month').value = data.__month;
   Object.entries(data).forEach(([k, v]) => {
     if (k.startsWith('__')) return;
@@ -1178,6 +1187,8 @@ function switchToMonth(monthStr) {
     applyMonthData(data);
   } else {
     document.getElementById('inv-month').value = monthStr;
+    // For a new month, start with a clone of the current categories/items
+    CATEGORIES = cloneCategories(CATEGORIES);
     clearForm();
   }
   // Update _prevMonth tracker if it exists
