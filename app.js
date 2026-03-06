@@ -1568,10 +1568,6 @@ function updateCashOnHand() {
 
   let cohBefore = startVal;
   DAYS().forEach((_, i) => {
-    // Write "COH before calc" for all days (all are display cells now)
-    const cell = document.getElementById(`coh-before-${i}`);
-    if (cell) cell.textContent = fmt(cohBefore);
-
     // Cash income from "Cash" sales source for this day
     const cashEl = qsel(`s_${i}_Cash`);
     const cashIncome = cashEl ? (parseFloat(cashEl.value) || 0) : 0;
@@ -1583,6 +1579,12 @@ function updateCashOnHand() {
       dayExp += el ? (parseFloat(el.value) || 0) : 0;
     });
 
+    // Write "COH before calc" for all days (all are display cells now)
+    // Now includes cash earned on the same day
+    const cell = document.getElementById(`coh-before-${i}`);
+    if (cell) cell.textContent = fmt(cohBefore + cashIncome);
+
+    // Calculate cash on hand after expenses for the day
     const cohAfter = cohBefore + cashIncome - dayExp;
 
     // Write "Cash on Hand" in expenses table
@@ -1937,9 +1939,24 @@ function buildScreenshotClone(qrText) {
   hoursTitle.textContent = tEn('employeeHours');
   hoursSection.appendChild(hoursTitle);
 
-  const hoursClone = document.getElementById('hours-table').cloneNode(true);
+  // Clone and filter employees with no data
+  const hoursTable = document.getElementById('hours-table');
+  const hoursClone = hoursTable.cloneNode(true);
   forceEnglishClone(hoursClone);
   styleCloneTable(hoursClone);
+  // Remove employee rows with no data
+  hoursClone.querySelectorAll('tbody tr').forEach(tr => {
+    // Check if all inputs in this row are empty or zero
+    const inputs = tr.querySelectorAll('input');
+    let hasData = false;
+    inputs.forEach(inp => {
+      if ((inp.value && parseFloat(inp.value) !== 0) || (inp.dataset.salary && parseFloat(inp.value) !== 0)) {
+        hasData = true;
+      }
+    });
+    if (!hasData && inputs.length > 0) tr.remove();
+  });
+  // Replace remaining inputs with spans
   hoursClone.querySelectorAll('input').forEach(inp => {
     const span = document.createElement('span');
     if (inp.dataset.salary) {
@@ -1956,41 +1973,58 @@ function buildScreenshotClone(qrText) {
 
   // Clone invoices table (if vendors exist) — English title
   if (vendors.length > 0) {
-    const invTitle = document.createElement('div');
-    invTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
-    invTitle.textContent = tEn('invoices');
-    wrap.appendChild(invTitle);
-
-    const invClone = document.getElementById('invoices-table').cloneNode(true);
+    // Filter out vendor rows with no data
+    const invTable = document.getElementById('invoices-table');
+    const invClone = invTable.cloneNode(true);
     forceEnglishClone(invClone);
     styleCloneTable(invClone);
-    // Replace toggle divs with paid/unpaid text labels before replacing inputs
-    invClone.querySelectorAll('.inv-cell-toggle').forEach(tog => {
-      const hidden = tog.querySelector('[data-key]');
-      const isPaid = hidden && hidden.value === '1';
-      const isVisible = tog.style.display !== 'none';
-      if (isVisible) {
-        const label = document.createElement('span');
-        label.style.cssText = 'display:block;text-align:center;font-size:10px;font-weight:700;padding:2px 0;' + (isPaid ? 'color:#27ae60;' : 'color:#e74c3c;');
-        label.textContent = isPaid ? 'Paid' : 'Unpaid';
-        tog.parentNode.replaceChild(label, tog);
-      } else {
-        tog.remove();
-      }
+    // Remove vendor rows with no data
+    invClone.querySelectorAll('tbody tr').forEach(tr => {
+      // Check if all inputs in this row are empty or zero
+      const inputs = tr.querySelectorAll('input[type="number"]');
+      let hasData = false;
+      inputs.forEach(inp => {
+        if (inp.value && parseFloat(inp.value) !== 0) {
+          hasData = true;
+        }
+      });
+      if (!hasData && inputs.length > 0) tr.remove();
     });
-    // Now replace number inputs with formatted text
-    invClone.querySelectorAll('input[type="number"]').forEach(inp => {
-      const span = document.createElement('span');
-      const v = parseFloat(inp.value);
-      span.textContent = isNaN(v) ? '–' : '$' + v.toFixed(2);
-      span.style.cssText = 'display:block;text-align:right;font-size:13px;padding:4px;color:#1e1e2f;';
-      inp.parentNode.replaceChild(span, inp);
-    });
-    // Remove any remaining hidden inputs
-    invClone.querySelectorAll('input[type="hidden"]').forEach(el => el.remove());
-    invClone.querySelectorAll('input[type="checkbox"]').forEach(el => el.remove());
-    invClone.querySelectorAll('.emp-check-cell').forEach(el => el.remove());
-    wrap.appendChild(invClone);
+    // Only add section if at least one vendor row remains
+    if (invClone.querySelectorAll('tbody tr').length > 0) {
+      const invTitle = document.createElement('div');
+      invTitle.style.cssText = 'font-size:13px;font-weight:600;color:#6b7194;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;';
+      invTitle.textContent = tEn('invoices');
+      wrap.appendChild(invTitle);
+
+      // Replace toggle divs with paid/unpaid text labels before replacing inputs
+      invClone.querySelectorAll('.inv-cell-toggle').forEach(tog => {
+        const hidden = tog.querySelector('[data-key]');
+        const isPaid = hidden && hidden.value === '1';
+        const isVisible = tog.style.display !== 'none';
+        if (isVisible) {
+          const label = document.createElement('span');
+          label.style.cssText = 'display:block;text-align:center;font-size:10px;font-weight:700;padding:2px 0;' + (isPaid ? 'color:#27ae60;' : 'color:#e74c3c;');
+          label.textContent = isPaid ? 'Paid' : 'Unpaid';
+          tog.parentNode.replaceChild(label, tog);
+        } else {
+          tog.remove();
+        }
+      });
+      // Now replace number inputs with formatted text
+      invClone.querySelectorAll('input[type="number"]').forEach(inp => {
+        const span = document.createElement('span');
+        const v = parseFloat(inp.value);
+        span.textContent = isNaN(v) ? '–' : '$' + v.toFixed(2);
+        span.style.cssText = 'display:block;text-align:right;font-size:13px;padding:4px;color:#1e1e2f;';
+        inp.parentNode.replaceChild(span, inp);
+      });
+      // Remove any remaining hidden inputs
+      invClone.querySelectorAll('input[type="hidden"]').forEach(el => el.remove());
+      invClone.querySelectorAll('input[type="checkbox"]').forEach(el => el.remove());
+      invClone.querySelectorAll('.emp-check-cell').forEach(el => el.remove());
+      wrap.appendChild(invClone);
+    }
   }
 
   // Clone cash expenses table — always show (even when no expense items)
