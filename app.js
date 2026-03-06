@@ -785,13 +785,13 @@ function buildHoursTable() {
     th.textContent = t('daysShort')[i];
     headRow.appendChild(th);
   });
-  headRow.innerHTML += `<th data-i18n="totalHrs">${t('totalHrs')}</th><th data-i18n="salary">${t('salary')}</th>`;
+  headRow.innerHTML += `<th data-i18n="totalHrs">${t('totalHrs')}</th>`;
 
-  // Salary totals row (no day totals)
+  // Only total hours row (no salary)
   const totRow = document.getElementById('hours-totals-row');
   totRow.innerHTML = '';
   const colspan = 1 + 7 + 1; // employee + days + totalHrs
-  totRow.innerHTML = `<td colspan="${colspan}" style="text-align:right;font-weight:600" data-i18n="totalSalary">${t('totalSalary') || 'Total Salary'}</td><td class="tot-cell" id="htot-salary">$0.00</td>`;
+  totRow.innerHTML = `<td colspan="${colspan}" style="text-align:right;font-weight:600" data-i18n="totalHrs">${t('totalHrs')}</td>`;
 
   const tbody = document.getElementById('hours-body');
   tbody.innerHTML = '';
@@ -808,10 +808,6 @@ function buildHoursTable() {
         data-day="${i}" /></td>`;
     });
     row += `<td class="tot-cell" id="etot-${safeId}">0</td>`;
-    row += `<td><input class="inp" type="number" inputmode="decimal" min="0" step="0.01"
-      placeholder="0.00"
-      data-key="sal_${emp}"
-      data-salary="1" /></td>`;
     tr.innerHTML = row;
     tbody.appendChild(tr);
   });
