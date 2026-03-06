@@ -1509,13 +1509,18 @@ function calcEndingCash(weekData) {
   let cohBefore = startCash;
   for (let i = 0; i < 7; i++) {
     // Cash income: try new format first, fall back to old
-    const cashKey = weekData['__salesSources'] ? `s_${i}_Cash` : `s_${i}_cash`;
-    const cashIncome = parseFloat(weekData[cashKey]) || 0;
-
+    let cashIncome = 0;
+    if (weekData['__salesSources']) {
+      cashIncome = parseFloat(weekData[`s_${i}_Cash`]) || 0;
+    } else if (weekData[`s_${i}_cash`] !== undefined) {
+      cashIncome = parseFloat(weekData[`s_${i}_cash`]) || 0;
+    }
     let dayExp = 0;
-    expenses.forEach(ex => {
-      dayExp += parseFloat(weekData[`exp_${ex}_${i}`]) || 0;
-    });
+    if (Array.isArray(expenses)) {
+      expenses.forEach(ex => {
+        dayExp += parseFloat(weekData[`exp_${ex}_${i}`]) || 0;
+      });
+    }
     const cohAfter = cohBefore + cashIncome - dayExp;
     cohBefore = cohAfter;
   }
@@ -1524,9 +1529,22 @@ function calcEndingCash(weekData) {
 
 function findLatestAvailableWeekData(currentDateStr) {
   const weeks = getSavedWeeks(); // newest first
-  const candidate = weeks.find(w => w !== currentDateStr);
-  if (!candidate) return null;
-  return loadWeekData(candidate);
+  for (const w of weeks) {
+    if (w === currentDateStr) continue;
+    const data = loadWeekData(w);
+    // Check for any cash sales or cash on hand data
+    let hasCash = false;
+    if (data) {
+      // Check for any cash sales or ending cash
+      for (let i = 0; i < 7; i++) {
+        const cashKey = data['__salesSources'] ? `s_${i}_Cash` : `s_${i}_cash`;
+        if (parseFloat(data[cashKey]) || 0) { hasCash = true; break; }
+      }
+      if (parseFloat(data['coh_start']) || 0) hasCash = true;
+    }
+    if (hasCash) return data;
+  }
+  return null;
 }
 
 function autoFillCashOnHand() {
@@ -1537,13 +1555,11 @@ function autoFillCashOnHand() {
     showToast(t('cohNoPrevious'));
     return;
   }
-
   const ending = calcEndingCash(latestData);
-  if (ending === null) {
+  if (ending === null || isNaN(ending)) {
     showToast(t('cohNoPrevious'));
     return;
   }
-
   document.getElementById('coh-start').value = ending.toFixed(2);
   saveState();
   updateCashOnHand();
@@ -2677,8 +2693,7 @@ function exportCSV() {
       const cashIncome = cashEl ? (parseFloat(cashEl.value) || 0) : 0;
       let dayExp = 0;
       cashExpenses.forEach(ex => {
-        const el = qsel(`exp_${ex}_${i}`);
-        dayExp += el ? (parseFloat(el.value) || 0) : 0;
+        dayExp += parseFloat(weekData[`exp_${ex}_${i}`]) || 0;
       });
       const cohAfter = cohBefore + cashIncome - dayExp;
       cohAfterVals.push(cohAfter.toFixed(2));
