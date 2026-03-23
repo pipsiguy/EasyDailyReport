@@ -1,0 +1,8 @@
+node_modules/
+package-lock.json
+package.json
+test_qr.html
+test_qr.mjs
+test_qr2.cjs
+test_zbar.cjs
+test_qr_400.png
