@@ -1267,6 +1267,55 @@ function openMonthPicker() {
 }
 
 /* ═══════════════════════════════════════════
+   PDF Unicode Font Loader (CJK + Latin)
+═══════════════════════════════════════════ */
+let _pdfFontB64 = null;
+
+function _ab2b64(buf) {
+  const u8 = new Uint8Array(buf);
+  const parts = [];
+  for (let i = 0; i < u8.length; i += 0x8000)
+    parts.push(String.fromCharCode.apply(null, u8.subarray(i, Math.min(i + 0x8000, u8.length))));
+  return btoa(parts.join(''));
+}
+
+async function loadPDFUnicodeFont(doc) {
+  const FONT = 'UniCJK';
+  function reg(b64) {
+    doc.addFileToVFS(FONT + '.ttf', b64);
+    doc.addFont(FONT + '.ttf', FONT, 'normal');
+    doc.addFont(FONT + '.ttf', FONT, 'bold');
+  }
+  if (_pdfFontB64) { reg(_pdfFontB64); console.log('[PDF Font] cached'); return FONT; }
+
+  const urls = [
+    'https://cdn.jsdelivr.net/gh/lxgw/LxgwWenKai/fonts/TTF/LXGWWenKai-Regular.ttf',
+    'https://cdn.jsdelivr.net/gh/lxgw/LxgwWenKai@v1.330/fonts/TTF/LXGWWenKai-Regular.ttf',
+  ];
+
+  for (const url of urls) {
+    try {
+      console.log('[PDF Font] trying', url);
+      const r = await fetch(url);
+      if (!r.ok) { console.warn('[PDF Font] HTTP', r.status); continue; }
+      const buf = await r.arrayBuffer();
+      if (buf.byteLength < 100000) { console.warn('[PDF Font] too small', buf.byteLength); continue; }
+      console.log('[PDF Font] downloaded', (buf.byteLength / 1048576).toFixed(1), 'MB');
+      const b64 = _ab2b64(buf);
+      reg(b64);
+      _pdfFontB64 = b64;
+      console.log('[PDF Font] ✅ loaded');
+      return FONT;
+    } catch (e) { console.warn('[PDF Font] ❌', e.message || e); }
+  }
+  console.error('[PDF Font] all sources failed – CJK will not render');
+  return null;
+}
+
+const _CJK_RE = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/;
+function _hasCJK(s) { return _CJK_RE.test(s); }
+
+/* ═══════════════════════════════════════════
    PDF EXPORT & IMPORT
 ═══════════════════════════════════════════ */
 async function generateSnapshot() {
@@ -1283,6 +1332,24 @@ async function generateSnapshot() {
 
     const ms = document.getElementById('inv-month').value;
     const storeName = document.getElementById('store-name').textContent || '';
+
+    // Detect CJK in data that will go into the PDF
+    const _pdfText = [storeName,
+      ...CATEGORIES.flatMap(c => [getCategoryLabel(c), ...c.items.map(i => i.name)]),
+      ...(monthlyInvoices || []).map(i => i.vendor || ''),
+      (document.getElementById('inv-notes') || {}).value || '',
+      t('inventoryOf'), t('item'), t('grandTotal'),
+    ].join('');
+    const _needsUni = currentLang !== 'en' || _hasCJK(_pdfText);
+
+    // Load Unicode font for CJK / accented characters
+    if (_needsUni) {
+      const uf = await loadPDFUnicodeFont(doc);
+      if (uf) {
+        const _sf = doc.setFont.bind(doc);
+        doc.setFont = (fam, sty) => _sf(fam === 'helvetica' ? uf : fam, sty);
+      }
+    }
 
     const pw = doc.internal.pageSize.getWidth();
     const ph = doc.internal.pageSize.getHeight();

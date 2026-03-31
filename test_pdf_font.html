@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PDF CJK Font Test</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #e0e0e0; }
+  h1 { color: #6c63ff; }
+  .test { background: #16213e; border-radius: 8px; padding: 16px; margin: 12px 0; }
+  .pass { border-left: 4px solid #1fa855; }
+  .fail { border-left: 4px solid #e53e3e; }
+  .pending { border-left: 4px solid #f0c040; }
+  button { background: #6c63ff; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 6px 4px; }
+  button:disabled { opacity: 0.5; }
+  pre { background: #0f3460; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+  .status { font-weight: bold; }
+  a { color: #6c63ff; }
+</style>
+</head>
+<body>
+<h1>PDF CJK &amp; Spanish Font Test</h1>
+<p>This page tests whether Chinese and Spanish characters render correctly in jsPDF-generated PDFs.</p>
+
+<div id="url-tests"></div>
+
+<h2>Generate Test PDFs</h2>
+<button id="btn-test-helvetica" onclick="generateTestPDF('helvetica')">Test with Helvetica (default)</button>
+<button id="btn-test-unicode" onclick="generateTestPDF('unicode')" disabled>Test with Unicode Font</button>
+<button id="btn-test-both" onclick="generateTestPDF('both')" disabled>Generate Both (side by side)</button>
+
+<div id="results"></div>
+
+<h2>Console Log</h2>
+<pre id="log"></pre>
+
+<script>
+const logEl = document.getElementById('log');
+function log(msg, type) {
+  const prefix = type === 'ok' ? '✅ ' : type === 'err' ? '❌ ' : type === 'warn' ? '⚠️ ' : '   ';
+  logEl.textContent += prefix + msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// Chinese test strings
+const ZH_TESTS = [
+  '肉类 & 海鲜',       // Meat & Seafood
+  '牛肉',               // Beef
+  '鸡肉',               // Chicken
+  '三文鱼',             // Salmon
+  '蔬菜 & 农产品',     // Produce & Vegetables
+  '大白菜',             // Cabbage
+  '酱料 & 调味品',     // Sauces & Seasonings
+  '酱油',               // Soy Sauce
+  '库存总计',           // Grand Total
+  '小计',               // Subtotal
+  '月度发票',           // Monthly Invoices
+  '已付',               // Paid
+  '未付',               // Unpaid
+  '每月库存报告',       // Monthly Inventory Report
+  '备注',               // Notes
+];
+
+// Spanish test strings
+const ES_TESTS = [
+  'Carne y Mariscos',
+  'Verduras y Productos',
+  'Salsas y Condimentos',
+  'Año nuevo, información útil',
+  'subtítulo con señal',
+  'Factura pagada',
+  'Notas del inventario',
+];
+
+// Convert ArrayBuffer to base64 (chunked, safe for large files)
+function ab2b64(buf) {
+  const u8 = new Uint8Array(buf);
+  const parts = [];
+  for (let i = 0; i < u8.length; i += 0x8000) {
+    parts.push(String.fromCharCode.apply(null, u8.subarray(i, Math.min(i + 0x8000, u8.length))));
+  }
+  return btoa(parts.join(''));
+}
+
+// Font URLs to test (in priority order)
+const FONT_URLS = [
+  { label: 'LXGW WenKai (npm webfont)', url: 'https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/fonts/LXGWWenKai-Regular.ttf' },
+  { label: 'LXGW WenKai Lite (npm)', url: 'https://cdn.jsdelivr.net/npm/lxgw-wenkai-lite-webfont@1.7.0/fonts/LXGWWenKaiLite-Regular.ttf' },
+  { label: 'LXGW WenKai (GitHub default branch)', url: 'https://cdn.jsdelivr.net/gh/lxgw/LxgwWenKai/fonts/TTF/LXGWWenKai-Regular.ttf' },
+  { label: 'LXGW WenKai (GitHub v1.330)', url: 'https://cdn.jsdelivr.net/gh/lxgw/LxgwWenKai@v1.330/fonts/TTF/LXGWWenKai-Regular.ttf' },
+  { label: 'Noto Sans SC (variable – expect fail)', url: 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf' },
+];
+
+let loadedFontB64 = null;
+let workingUrl = null;
+
+async function testAllURLs() {
+  const container = document.getElementById('url-tests');
+  container.innerHTML = '<h2>Font URL Tests</h2>';
+
+  for (const { label, url } of FONT_URLS) {
+    const div = document.createElement('div');
+    div.className = 'test pending';
+    div.innerHTML = `<strong>${label}</strong><br><small>${url}</small><br><span class="status">Testing...</span>`;
+    container.appendChild(div);
+
+    try {
+      log(`Testing: ${label}`);
+      const t0 = performance.now();
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        div.className = 'test fail';
+        div.querySelector('.status').textContent = `HTTP ${resp.status} ${resp.statusText}`;
+        log(`HTTP ${resp.status} - ${label}`, 'err');
+        continue;
+      }
+
+      const buf = await resp.arrayBuffer();
+      const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+      const sizeMB = (buf.byteLength / 1048576).toFixed(2);
+
+      if (buf.byteLength < 100000) {
+        div.className = 'test fail';
+        div.querySelector('.status').textContent = `Too small: ${buf.byteLength} bytes (not a real font)`;
+        log(`Too small: ${buf.byteLength} bytes - ${label}`, 'err');
+        continue;
+      }
+
+      // Try to register with jsPDF to see if it parses
+      try {
+        const { jsPDF } = window.jspdf;
+        const testDoc = new jsPDF();
+        const b64 = ab2b64(buf);
+        testDoc.addFileToVFS('test.ttf', b64);
+        testDoc.addFont('test.ttf', 'TestFont', 'normal');
+        testDoc.setFont('TestFont', 'normal');
+        testDoc.setFontSize(12);
+        testDoc.text('肉类测试', 10, 20);  // Test CJK rendering
+
+        div.className = 'test pass';
+        div.querySelector('.status').textContent = `✅ OK — ${sizeMB} MB, downloaded in ${elapsed}s, jsPDF registered OK`;
+        log(`OK: ${sizeMB} MB in ${elapsed}s — ${label}`, 'ok');
+
+        if (!loadedFontB64) {
+          loadedFontB64 = b64;
+          workingUrl = url;
+          div.querySelector('.status').textContent += ' ★ USING THIS ONE';
+          log(`Selected: ${label}`, 'ok');
+        }
+      } catch (parseErr) {
+        div.className = 'test fail';
+        div.querySelector('.status').textContent = `Downloaded (${sizeMB} MB, ${elapsed}s) but jsPDF FAILED to parse: ${parseErr.message}`;
+        log(`Parse error: ${parseErr.message} - ${label}`, 'err');
+      }
+    } catch (e) {
+      div.className = 'test fail';
+      div.querySelector('.status').textContent = `Network error: ${e.message}`;
+      log(`Network error: ${e.message} - ${label}`, 'err');
+    }
+  }
+
+  if (loadedFontB64) {
+    document.getElementById('btn-test-unicode').disabled = false;
+    document.getElementById('btn-test-both').disabled = false;
+    log('Font loaded — Unicode PDF buttons enabled', 'ok');
+  } else {
+    log('ALL FONT URLS FAILED — cannot generate Unicode PDF', 'err');
+  }
+}
+
+function generateTestPDF(mode) {
+  const results = document.getElementById('results');
+  const { jsPDF } = window.jspdf;
+
+  function makePDF(fontName, fontB64) {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+
+    if (fontB64 && fontName !== 'helvetica') {
+      doc.addFileToVFS('UniCJK.ttf', fontB64);
+      doc.addFont('UniCJK.ttf', 'UniCJK', 'normal');
+      doc.addFont('UniCJK.ttf', 'UniCJK', 'bold');
+    }
+
+    const fn = fontB64 && fontName !== 'helvetica' ? 'UniCJK' : 'helvetica';
+
+    let y = 20;
+    doc.setFontSize(16);
+    doc.setFont(fn, 'bold');
+    doc.setTextColor(108, 99, 255);
+    doc.text(`PDF Font Test — ${fn === 'helvetica' ? 'Helvetica (default)' : 'Unicode Font'}`, 15, y);
+    y += 10;
+
+    // Chinese section
+    doc.setFontSize(12);
+    doc.setFont(fn, 'bold');
+    doc.setTextColor(30, 30, 47);
+    doc.text('Chinese Characters (中文)', 15, y);
+    y += 7;
+
+    doc.setFontSize(10);
+    doc.setFont(fn, 'normal');
+    ZH_TESTS.forEach(text => {
+      doc.text(text, 15, y);
+      y += 5;
+    });
+
+    y += 5;
+
+    // Spanish section
+    doc.setFontSize(12);
+    doc.setFont(fn, 'bold');
+    doc.text('Spanish Characters (Español)', 15, y);
+    y += 7;
+
+    doc.setFontSize(10);
+    doc.setFont(fn, 'normal');
+    ES_TESTS.forEach(text => {
+      doc.text(text, 15, y);
+      y += 5;
+    });
+
+    y += 5;
+
+    // Mixed content section
+    doc.setFontSize(12);
+    doc.setFont(fn, 'bold');
+    doc.text('Mixed Content (Inventory Simulation)', 15, y);
+    y += 7;
+
+    doc.setFontSize(10);
+    doc.setFont(fn, 'normal');
+    const mixed = [
+      '牛肉 (Beef)        $3.69/lb     ×42.5    $156.83',
+      '三文鱼 (Salmon)    $8.00/lb     ×18.75   $150.00',
+      '酱油 (Soy Sauce)   $15.00/bucket ×3      $45.00',
+      '小计: $351.83',
+      '总计: $4,827.93',
+      'Factura pagada — Pacific Coast Seafood — $1,284.50',
+    ];
+    mixed.forEach(text => {
+      doc.text(text, 15, y);
+      y += 5;
+    });
+
+    return doc;
+  }
+
+  if (mode === 'helvetica' || mode === 'both') {
+    const doc = makePDF('helvetica', null);
+    doc.save('test_pdf_helvetica.pdf');
+    log('Generated: test_pdf_helvetica.pdf', 'ok');
+  }
+
+  if ((mode === 'unicode' || mode === 'both') && loadedFontB64) {
+    const doc = makePDF('unicode', loadedFontB64);
+    doc.save('test_pdf_unicode.pdf');
+    log('Generated: test_pdf_unicode.pdf', 'ok');
+  }
+
+  results.innerHTML = '<div class="test pass"><strong>PDFs generated!</strong> Check your Downloads folder. Compare helvetica vs unicode PDFs — Chinese characters should render correctly in the unicode version.</div>';
+}
+
+// Auto-run font URL tests on load
+testAllURLs();
+</script>
+</body>
+</html>
