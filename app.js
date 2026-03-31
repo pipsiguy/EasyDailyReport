@@ -1858,7 +1858,7 @@ async function generateSnapshot() {
     // Download
     const link = document.createElement('a');
     const weekVal = document.getElementById('week-start').value || 'week';
-    link.download = `${storeName}-${weekVal}.png`;
+    link.download = `${String(storeName || 'report').replace(/[\\/:*?"<>|]/g, '-').trim() || 'report'}-${weekVal}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 
@@ -2290,7 +2290,7 @@ async function generatePDFSnapshot() {
     doc.text('EDR_JSON_BASE64_END', 12, payloadY);
 
     const weekVal = document.getElementById('week-start').value || 'week';
-    doc.save(`${storeName}-${weekVal}.pdf`);
+    doc.save(`${String(storeName || 'report').replace(/[\\/:*?"<>|]/g, '-').trim() || 'report'}-${weekVal}.pdf`);
     showToast(t('pdfSaved'));
   } catch (e) {
     console.error(e);
@@ -2614,7 +2614,7 @@ function saveQRDataToStorage(jsonStr) {
   const data = JSON.parse(jsonStr);
   if (!data.w) return false;
   // Sanitize names from QR to prevent XSS
-  const sanitize = str => String(str).replace(/[<>"&]/g, '');
+  const sanitize = str => String(str).replace(/[<>"&|]/g, '');
   const sanitizeList = arr => (Array.isArray(arr) ? arr.map(sanitize) : []);
 
   const s = {};
@@ -2952,8 +2952,9 @@ function deleteOldest10Weeks() {
 function enforceWeekLimit() {
   const weeks = getSavedWeeks(); // newest first
   if (weeks.length <= MAX_WEEKS) return;
-  // Remove oldest weeks beyond limit
-  const toRemove = weeks.slice(MAX_WEEKS);
+  // Remove oldest weeks beyond limit, but never the currently displayed week
+  const currentWeek = document.getElementById('week-start').value;
+  const toRemove = weeks.slice(MAX_WEEKS).filter(w => w !== currentWeek);
   toRemove.forEach(w => localStorage.removeItem(weekKey(w)));
   if (toRemove.length) showToast(t('maxWeeksReached'));
 }
@@ -3107,7 +3108,13 @@ function init() {
       applyState(existing);
     } else {
       salesSources = DEFAULT_SALES_SOURCES.slice();
+      vendors = [];
+      cashExpenses = [];
+      employees = [];
       buildSalesTable();
+      buildInvoicesTable();
+      buildExpensesTable();
+      buildHoursTable();
       clearForm();
       updateDateLabels();
     }
@@ -3207,7 +3214,7 @@ function exportCSV() {
   const safeStoreName = String(storeName || 'report').replace(/[\\/:*?"<>|]/g, '-').trim() || 'report';
 
   // Header
-  rows.push(storeName + ' \u2013 Week of ' + formatDate(dates[0]) + ' \u2013 ' + formatDate(dates[6]));
+  rows.push(csvEscape(storeName + ' \u2013 Week of ' + formatDate(dates[0]) + ' \u2013 ' + formatDate(dates[6])));
   rows.push('');
 
   // --- Cash on Hand ---
@@ -3249,10 +3256,10 @@ function exportCSV() {
     const cohBeforeVals = [];
     const cohAfterVals = [];
     enDays.forEach((_, i) => {
-      cohBeforeVals.push(cohBefore.toFixed(2));
       // Cash income from Cash sales source
       const cashEl = qsel(`s_${i}_Cash`);
       const cashIncome = cashEl ? (parseFloat(cashEl.value) || 0) : 0;
+      cohBeforeVals.push((cohBefore + cashIncome).toFixed(2));
       let dayExp = 0;
       cashExpenses.forEach(ex => {
         const expEl = qsel(`exp_${ex}_${i}`);

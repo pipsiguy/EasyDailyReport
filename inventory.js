@@ -188,7 +188,7 @@ const I18N = {
     monthDeleted: '🗑 Month deleted',
     confirmDelete: 'Are you sure you want to delete this month?',
     working: 'Working…',
-    snapshotSaved: '� PDF exported!',
+    snapshotSaved: '\uD83D\uDCC4 PDF exported!',
     snapshotError: '⚠ Error generating PDF',
     pdfUploadSuccess: '✅ Inventory restored from PDF',
     pdfUploadNone: '⚠ No inventory data found in PDF',
@@ -286,7 +286,7 @@ const I18N = {
     monthDeleted: '🗑 月份已删除',
     confirmDelete: '确定要删除这个月份吗？',
     working: '处理中…',
-    snapshotSaved: '� PDF 已导出！',
+    snapshotSaved: '📄 PDF 已导出！',
     snapshotError: '⚠ 生成 PDF 出错',
     pdfUploadSuccess: '✅ 已从 PDF 恢复库存',
     pdfUploadNone: '⚠ PDF 中未找到库存数据',
@@ -384,7 +384,7 @@ const I18N = {
     monthDeleted: '🗑 Mes eliminado',
     confirmDelete: '¿Estás seguro de que quieres eliminar este mes?',
     working: 'Procesando…',
-    snapshotSaved: '� ¡PDF exportado!',
+    snapshotSaved: '📄 ¡PDF exportado!',
     snapshotError: '⚠ Error al generar PDF',
     pdfUploadSuccess: '✅ Inventario restaurado desde PDF',
     pdfUploadNone: '⚠ No se encontraron datos de inventario en el PDF',
@@ -878,7 +878,9 @@ function buildInventory() {
       const cat = findCategory(inp.dataset.cat);
       const item = findItem(cat, inp.dataset.item);
       if (!item) return;
-      item.name = inp.value.trim() || item.name;
+      const val = inp.value.trim() || item.name;
+      if (!isNameSafe(val)) { inp.value = item.name; return; }
+      item.name = val;
       inp.value = item.name;
       saveCategoriesConfig();
     });
@@ -1439,7 +1441,7 @@ async function generateSnapshot() {
       items.forEach(it => {
         needPage(5);
         doc.text(it.name, ml, y);
-        const priceStr = it.price ? `$${it.price.toFixed(2)}/${it.unit}` : t('na');
+        const priceStr = it.price != null ? `$${it.price.toFixed(2)}/${it.unit}` : t('na');
         doc.text(priceStr, colPrice, y);
         doc.text(`\u00d7${it.qty}`, colQty, y);
         doc.text(`$${it.lineTotal.toFixed(2)}`, colTotal, y, { align: 'right' });
@@ -1563,7 +1565,7 @@ async function generateSnapshot() {
     }
 
     // Save
-    doc.save(`inventory_${ms}_${storeName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`inventory_${ms}_${String(storeName || 'store').replace(/[\\/:*?"<>|\s]+/g, '_').trim() || 'store'}.pdf`);
     showToast(t('snapshotSaved'));
   } catch (err) {
     console.error(err);
@@ -1903,7 +1905,7 @@ function exportInventoryCSV() {
   const rows = [];
 
   // Title
-  rows.push(storeName + ' \u2013 ' + t('monthlyInventory') + ' \u2013 ' + formatMonth(ms));
+  rows.push(csvEscape(storeName + ' \u2013 ' + t('monthlyInventory') + ' \u2013 ' + formatMonth(ms)));
   rows.push('');
 
   // Category tables
@@ -1926,7 +1928,7 @@ function exportInventoryCSV() {
 
     if (items.length === 0) return;
 
-    rows.push(label.toUpperCase());
+    rows.push(csvEscape(label.toUpperCase()));
     rows.push(['Item', 'Price', 'Unit', 'Qty', 'Total'].map(csvEscape).join(','));
     items.forEach(it => {
       rows.push([
@@ -1983,7 +1985,7 @@ function exportInventoryCSV() {
   const csv = bom + rows.join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
-  link.download = `inventory_${ms}_${storeName.replace(/\s+/g, '_')}.csv`;
+  link.download = `inventory_${ms}_${String(storeName || 'store').replace(/[\\/:*?"<>|\s]+/g, '_').trim() || 'store'}.csv`;
   link.href = URL.createObjectURL(blob);
   link.click();
   URL.revokeObjectURL(link.href);
@@ -2028,6 +2030,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const prevMs = _prevMonth;
     if (prevMs) {
       const prevData = { __month: prevMs };
+      prevData.__categories = cloneCategories(CATEGORIES);
       document.querySelectorAll('.inv-qty').forEach(el => {
         const q = parseFloat(el.value);
         if (q) prevData[el.dataset.itemKey] = q;
@@ -2243,6 +2246,7 @@ function autoFillInvoices() {
 function addInvoice() {
   const name = (prompt(t('invoiceVendorName')) || '').trim();
   if (!name) return;
+  if (!isNameSafe(name)) return;
   const amtStr = (prompt(t('invoiceAmount'), '0') || '').trim();
   const amt = parseFloat(amtStr);
   // Default date to today
@@ -2319,7 +2323,7 @@ function renderInvoicesSection() {
   let grandTotal = 0;
   monthlyInvoices.forEach((inv, idx) => {
     grandTotal += inv.amount;
-    const safeName = inv.vendor.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const safeName = escapeHtml(inv.vendor);
     const safeDate = (inv.date || '').replace(/"/g, '&quot;');
     const paidClass = inv.paid ? 'inv-status-paid' : 'inv-status-unpaid';
     const paidLabel = inv.paid ? t('paid') : t('unpaid');

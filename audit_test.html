@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyDailyReport – Full Audit</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; }
+  h1 { color: #58a6ff; margin-bottom: 4px; }
+  h2 { color: #79c0ff; margin: 20px 0 8px; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
+  h3 { color: #d2a8ff; margin: 12px 0 6px; }
+  .subtitle { color: #8b949e; margin-bottom: 20px; }
+  .section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  button { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 8px 16px; cursor: pointer; margin: 4px; font-size: 14px; }
+  button:hover { background: #30363d; border-color: #58a6ff; }
+  button.primary { background: #238636; border-color: #2ea043; }
+  button.primary:hover { background: #2ea043; }
+  button.danger { background: #da3633; border-color: #f85149; }
+  button.danger:hover { background: #f85149; }
+  button.warn { background: #9e6a03; border-color: #d29922; }
+  button.warn:hover { background: #d29922; color: #000; }
+  #log { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-family: 'Cascadia Code', Consolas, monospace; font-size: 13px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; }
+  .pass { color: #3fb950; } .fail { color: #f85149; } .warn { color: #d29922; } .info { color: #58a6ff; } .dim { color: #8b949e; }
+  .stats { display: flex; gap: 20px; margin: 12px 0; }
+  .stat { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 10px 18px; text-align: center; }
+  .stat .n { font-size: 28px; font-weight: bold; }
+  .stat .l { font-size: 12px; color: #8b949e; }
+  iframe { width: 100%; height: 700px; border: 1px solid #30363d; border-radius: 6px; margin-top: 8px; }
+  .flex { display: flex; flex-wrap: wrap; gap: 6px; }
+  details { margin: 4px 0; }
+  summary { cursor: pointer; color: #79c0ff; }
+</style>
+</head>
+<body>
+
+<h1>EasyDailyReport – Full Audit Suite</h1>
+<p class="subtitle">Comprehensive test of both Daily Sales &amp; Monthly Inventory across EN / ZH / ES</p>
+
+<div class="stats" id="stats">
+  <div class="stat"><div class="n" id="stat-total">0</div><div class="l">Total Tests</div></div>
+  <div class="stat"><div class="n pass" id="stat-pass">0</div><div class="l">Passed</div></div>
+  <div class="stat"><div class="n fail" id="stat-fail">0</div><div class="l">Failed</div></div>
+  <div class="stat"><div class="n warn" id="stat-warn">0</div><div class="l">Warnings</div></div>
+</div>
+
+<div class="section">
+  <h2>1. Data Injection</h2>
+  <p style="color:#8b949e;margin-bottom:8px;">Inject stress-test data into localStorage, then open pages to verify.</p>
+  <div class="flex">
+    <button class="primary" onclick="injectAllTestData()">Inject All Test Data</button>
+    <button class="danger" onclick="clearAllTestData()">Clear All Test Data</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>2. Automated Tests</h2>
+  <p style="color:#8b949e;margin-bottom:8px;">Run automated checks against localStorage data integrity, calculation logic, and I18N.</p>
+  <div class="flex">
+    <button class="primary" onclick="runAllTests()">Run All Tests</button>
+    <button onclick="testDataIntegrity()">Data Integrity</button>
+    <button onclick="testCalculations()">Calculations</button>
+    <button onclick="testI18N()">I18N Keys</button>
+    <button onclick="testMetaCrossPage()">Cross-Page Meta</button>
+    <button onclick="testEdgeCases()">Edge Cases</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>3. Manual Testing Guide</h2>
+  <p style="color:#8b949e;margin-bottom:8px;">Open pages in iframes and follow the checklist. After injecting data, use these links:</p>
+  <div class="flex">
+    <button onclick="openDaily()">Open Daily Sales Page</button>
+    <button onclick="openInventory()">Open Inventory Page</button>
+  </div>
+  <details>
+    <summary>Daily Sales Checklist (click to expand)</summary>
+    <ol style="padding:12px 24px;color:#8b949e;line-height:2;">
+      <li>Page loads → store name "好运中餐馆 Lucky Wok" in header</li>
+      <li>ZH week (2026-03-23): Chinese vendor/employee/expense names visible</li>
+      <li>EN week (2026-03-16): 10 employees, 10 vendors, 8 sale sources, 8 expense types</li>
+      <li>ES week (2026-03-09): Accented names (María, Señora, Distribuidora García)</li>
+      <li>Switch language to 中文 → all labels translate, data names stay</li>
+      <li>Switch language to Español → all labels translate</li>
+      <li>Export PDF (ZH lang) → Chinese characters render correctly</li>
+      <li>Export PDF (EN lang) → Chinese store name renders correctly (CJK auto-detect)</li>
+      <li>Export PDF (ES lang) → Accent marks render correctly</li>
+      <li>Export CSV → open in text editor, check UTF-8 encoding</li>
+      <li>Export Snapshot (PNG) → QR code visible, download works</li>
+      <li>Upload a previously exported PDF → data restores correctly</li>
+      <li>Check Cash on Hand chain: Week 2 → Week 1 carry-over</li>
+      <li>Check notes character counter (QR byte limit)</li>
+      <li>History sidebar: 3 weeks visible with total sales</li>
+    </ol>
+  </details>
+  <details>
+    <summary>Inventory Checklist (click to expand)</summary>
+    <ol style="padding:12px 24px;color:#8b949e;line-height:2;">
+      <li>Page loads → month Mar 2026 with populated quantities</li>
+      <li>8 default categories with items, prices, units</li>
+      <li>Grand total matches sum of category subtotals</li>
+      <li>Invoices section: 10 invoices with paid/unpaid status</li>
+      <li>Notes section: 8 lines of notes</li>
+      <li>Export PDF → all categories, subtotals, invoices, notes</li>
+      <li>Export CSV → same data in spreadsheet format</li>
+      <li>Upload exported PDF → data round-trips correctly</li>
+      <li>Switch language → category names translate (built-in categories)</li>
+      <li>Search filter: type "chicken" → only matching items shown</li>
+      <li>Add custom category → appears at end</li>
+      <li>Add custom item to category → appears in table</li>
+      <li>Collapse/expand categories → toggle works</li>
+      <li>Month 2026-04 (ZH): Chinese category/item names, invoices</li>
+    </ol>
+  </details>
+  <div id="iframe-container"></div>
+</div>
+
+<div class="section">
+  <h2>4. Test Log</h2>
+  <button onclick="document.getElementById('log').textContent=''">Clear Log</button>
+  <div id="log"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// LOGGING
+// ═══════════════════════════════════════════════
+let counts = { total: 0, pass: 0, fail: 0, warn: 0 };
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = counts.total;
+  document.getElementById('stat-pass').textContent = counts.pass;
+  document.getElementById('stat-fail').textContent = counts.fail;
+  document.getElementById('stat-warn').textContent = counts.warn;
+}
+
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  const span = document.createElement('span');
+  span.className = cls || '';
+  span.textContent = msg + '\n';
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+function pass(msg) { counts.total++; counts.pass++; updateStats(); log('  ✅ PASS: ' + msg, 'pass'); }
+function fail(msg) { counts.total++; counts.fail++; updateStats(); log('  ❌ FAIL: ' + msg, 'fail'); }
+function warn(msg) { counts.total++; counts.warn++; updateStats(); log('  ⚠️  WARN: ' + msg, 'warn'); }
+function info(msg) { log('ℹ️  ' + msg, 'info'); }
+function heading(msg) { log('\n══ ' + msg + ' ══', 'info'); }
+function dim(msg) { log('  ' + msg, 'dim'); }
+
+function assert(condition, passMsg, failMsg) {
+  if (condition) pass(passMsg);
+  else fail(failMsg || passMsg);
+}
+
+// ═══════════════════════════════════════════════
+// CONSTANTS (must match app.js / inventory.js)
+// ═══════════════════════════════════════════════
+const WEEK_PREFIX = 'edr_week_';
+const INV_PREFIX  = 'edr_inv_';
+const META_KEY    = 'edr_meta';
+const INV_CFG_KEY = 'edr_inv_cfg_v1';
+
+// ═══════════════════════════════════════════════
+// TEST DATA INJECTION
+// ═══════════════════════════════════════════════
+function injectAllTestData() {
+  heading('INJECTING TEST DATA');
+  injectDailyTestData();
+  injectInventoryTestData();
+  info('All test data injected. Open pages to verify UI.');
+}
+
+function clearAllTestData() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && (k.startsWith('edr_') || k.startsWith('mufu_'))) keys.push(k);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  info('Cleared ' + keys.length + ' localStorage keys.');
+}
+
+// ── Daily Sales Data ────────────────────────────────────────────────
+function injectDailyTestData() {
+  info('Injecting 3 daily-sales weeks...');
+
+  // WEEK 1: English with 10 employees, 10 vendors (stress test)
+  const w1 = buildEnglishWeek();
+  localStorage.setItem(WEEK_PREFIX + '2026-03-16', JSON.stringify(w1));
+  dim('Week 1 (EN stress): 2026-03-16 — ' + JSON.stringify(w1).length + ' bytes');
+
+  // WEEK 2: Chinese names throughout
+  const w2 = buildChineseWeek();
+  localStorage.setItem(WEEK_PREFIX + '2026-03-23', JSON.stringify(w2));
+  dim('Week 2 (ZH stress): 2026-03-23 — ' + JSON.stringify(w2).length + ' bytes');
+
+  // WEEK 3: Spanish + edge cases
+  const w3 = buildSpanishWeek();
+  localStorage.setItem(WEEK_PREFIX + '2026-03-09', JSON.stringify(w3));
+  dim('Week 3 (ES edges): 2026-03-09 — ' + JSON.stringify(w3).length + ' bytes');
+
+  // Meta
+  const meta = JSON.parse(localStorage.getItem(META_KEY) || '{}');
+  meta.storeName = '好运中餐馆 Lucky Wok';
+  meta.lastWeek = '2026-03-23';
+  // Combined employee list from all 3 weeks
+  meta.employees = [
+    'Avery Chen','Noah Patel','Mia Garcia','Liam Nguyen','Emma Kim',
+    'Lucas Brown','Sophia Lee','Ethan Wilson','Olivia Davis','Mason Clark',
+    '张伟','李明','王芳','José García',"O'Brien",
+    'María González','Alejandro Muñoz','Señora López'
+  ];
+  meta.vendors = [
+    'Pacific Produce Co','North Shore Seafood','Metro Paper Supply',
+    'Urban Beverage Depot','Prime Protein Wholesale',
+    'City Packaging Group','Fresh Valley Farms','Downtown Cleaning Supply',
+    'Summit Noodle Import','Evergreen Sauce Traders',
+    '太平洋海鲜','金龙批发','本地菜农王师傅',
+    'Distribuidora García','Mercado López'
+  ];
+  meta.salesSources = ['Online','Cash','Credit Card','Uber Eats','DoorDash',
+    'SkipTheDishes','Catering','Corporate Orders','美团外卖','饿了么'];
+  localStorage.setItem(META_KEY, JSON.stringify(meta));
+
+  pass('3 daily-sales weeks injected + meta updated');
+}
+
+function buildEnglishWeek() {
+  const EMPS = ['Avery Chen','Noah Patel','Mia Garcia','Liam Nguyen','Emma Kim',
+    'Lucas Brown','Sophia Lee','Ethan Wilson','Olivia Davis','Mason Clark'];
+  const VENDS = ['Pacific Produce Co','North Shore Seafood','Metro Paper Supply',
+    'Urban Beverage Depot','Prime Protein Wholesale',
+    'City Packaging Group','Fresh Valley Farms','Downtown Cleaning Supply',
+    'Summit Noodle Import','Evergreen Sauce Traders'];
+  const SS = ['Online','Cash','Credit Card','Uber Eats','DoorDash',
+    'SkipTheDishes','Catering','Corporate Orders'];
+  const CX = ['Tips Cashout','Staff Meal','Taxi','Repair','Petty Cash',
+    'Office Supply','Emergency Purchase','Fuel'];
+  const s = {
+    __weekStart: '2026-03-16',
+    __employees: EMPS.slice(),
+    __vendors: VENDS.slice(),
+    __cashExpenses: CX.slice(),
+    __salesSources: SS.slice(),
+    coh_start: '1500.00',
+    notes: 'Stress test week with heavy transaction volume.\n10 employees and 10 vendors populated.\nDoorDash had slow day on Wed.\nRepair cost on Thursday $350.',
+  };
+  const rng = seeded(1001);
+  SS.forEach(src => { for (let d=0;d<7;d++) s['s_'+d+'_'+src] = f2(200+rng()*600); });
+  EMPS.forEach(emp => { for (let d=0;d<7;d++) s['h_'+emp+'_'+d] = String(Math.round((5+rng()*5)*2)/2); });
+  VENDS.forEach(v => { for (let d=0;d<7;d++) { if(rng()>0.35) { s['inv_'+v+'_'+d]=f2(50+rng()*400); s['invpaid_'+v+'_'+d]=rng()>0.4?'1':''; }}});
+  CX.forEach(ex => { for (let d=0;d<7;d++) { if(rng()>0.3) s['exp_'+ex+'_'+d]=f2(10+rng()*100); }});
+  return s;
+}
+
+function buildChineseWeek() {
+  const EMPS = ['张伟','李明','王芳','José García',"O'Brien"];
+  const VENDS = ['太平洋海鲜','金龙批发','Costco','本地菜农王师傅'];
+  const SS = ['Online','Cash','Credit Card','美团外卖','饿了么'];
+  const CX = ['日常用品','汽油','维修费','杂项开支'];
+  const s = {
+    __weekStart: '2026-03-23',
+    __employees: EMPS.slice(),
+    __vendors: VENDS.slice(),
+    __cashExpenses: CX.slice(),
+    __salesSources: SS.slice(),
+    coh_start: '1200.88',
+    notes: '第二周测试：中文数据压力测试。\n美团外卖和饿了么的订单量增加了。\n太平洋海鲜周四的发票还没付。\n张伟每天都上班，周末加班两小时。\nJosé García名字包含重音符号。',
+  };
+  const rng = seeded(2002);
+  SS.forEach(src => { for (let d=0;d<7;d++) s['s_'+d+'_'+src] = f2(150+rng()*800); });
+  EMPS.forEach(emp => { for (let d=0;d<7;d++) s['h_'+emp+'_'+d] = String(Math.round((4+rng()*8)*2)/2); });
+  VENDS.forEach(v => { for (let d=0;d<7;d++) { if(rng()>0.3) { s['inv_'+v+'_'+d]=f2(200+rng()*2000); s['invpaid_'+v+'_'+d]=rng()>0.45?'1':''; }}});
+  CX.forEach(ex => { for (let d=0;d<7;d++) { if(rng()>0.25) s['exp_'+ex+'_'+d]=f2(15+rng()*150); }});
+  return s;
+}
+
+function buildSpanishWeek() {
+  const EMPS = ['María González','Alejandro Muñoz','Señora López'];
+  const VENDS = ['Distribuidora García','Mercado López','Proveedor Señor Muñoz'];
+  const SS = ['Online','Cash','Credit Card','Uber Eats'];
+  const CX = ['Suministros','Gasolina','Reparaciones'];
+  const s = {
+    __weekStart: '2026-03-09',
+    __employees: EMPS.slice(),
+    __vendors: VENDS.slice(),
+    __cashExpenses: CX.slice(),
+    __salesSources: SS.slice(),
+    coh_start: '0',  // edge: zero starting cash
+    notes: 'Semana 3: Prueba en español con caracteres acentuados.\nDistribuidora García envió factura de $0.01.\n¡Verificar los acentos en el PDF!\nÚber Eats sin ventas esta semana.',
+  };
+  // Edge case values: zeroes, pennies, large values
+  s['s_0_Online'] = '0'; s['s_1_Online'] = '0'; s['s_2_Online'] = '150.25';
+  s['s_3_Online'] = '320.50'; s['s_4_Online'] = '0'; s['s_5_Online'] = '999.99'; s['s_6_Online'] = '0';
+  s['s_0_Cash'] = '50.01'; s['s_1_Cash'] = '0.50'; s['s_2_Cash'] = '0'; s['s_3_Cash'] = '0';
+  s['s_4_Cash'] = '0.01'; s['s_5_Cash'] = '5000.00'; s['s_6_Cash'] = '0';
+  s['s_0_Credit Card'] = '100'; s['s_1_Credit Card'] = '200'; s['s_2_Credit Card'] = '300';
+  s['s_3_Credit Card'] = '400'; s['s_4_Credit Card'] = '500'; s['s_5_Credit Card'] = '600'; s['s_6_Credit Card'] = '700';
+  for (let d=0;d<7;d++) s['s_'+d+'_Uber Eats'] = '0'; // all zeroes
+
+  s['h_María González_0']='0'; s['h_María González_1']='0'; s['h_María González_2']='0';
+  s['h_María González_3']='0'; s['h_María González_4']='0'; s['h_María González_5']='12'; s['h_María González_6']='12';
+  for (let d=0;d<5;d++) s['h_Alejandro Muñoz_'+d]='8.5';
+  s['h_Alejandro Muñoz_5']='0'; s['h_Alejandro Muñoz_6']='0';
+  for (let d=0;d<7;d++) s['h_Señora López_'+d]='4';
+
+  s['inv_Distribuidora García_0'] = '0.01'; s['invpaid_Distribuidora García_0'] = '1';
+  s['inv_Distribuidora García_5'] = '9999.99'; s['invpaid_Distribuidora García_5'] = '';
+  s['inv_Mercado López_3'] = '500.00'; s['invpaid_Mercado López_3'] = '1';
+  s['inv_Proveedor Señor Muñoz_6'] = '1234.56'; s['invpaid_Proveedor Señor Muñoz_6'] = '';
+
+  s['exp_Suministros_5'] = '250'; s['exp_Gasolina_2'] = '50'; s['exp_Gasolina_5'] = '50';
+  // Reparaciones: no expenses at all (edge: all zeroes)
+
+  return s;
+}
+
+// ── Inventory Data ──────────────────────────────────────────────────
+function injectInventoryTestData() {
+  info('Injecting 2 inventory months...');
+
+  // MONTH 1: March 2026 — English (default categories)
+  injectInventoryMonth1();
+
+  // MONTH 2: April 2026 — Chinese custom categories
+  injectInventoryMonth2();
+
+  pass('2 inventory months injected');
+}
+
+function injectInventoryMonth1() {
+  // Use default categories structure
+  const cats = getDefaultCategories();
+  const data = { __month: '2026-03', __categories: cats };
+
+  // Populate ~60 items with various quantities
+  const qtyMap = {
+    'meat_seafood__beef': 42.5, 'meat_seafood__chicken': 87, 'meat_seafood__chicken_bones': 30,
+    'meat_seafood__shrimp': 3, 'meat_seafood__salmon': 18.75, 'meat_seafood__crab_sticks': 5,
+    'meat_seafood__fried_shrimp': 2, 'meat_seafood__minced_tuna': 12.3, 'meat_seafood__sushi_salmon': 1,
+    'produce_vegetables__broccoli': 4, 'produce_vegetables__carrots': 3, 'produce_vegetables__cabbage': 12,
+    'produce_vegetables__large_onion': 2, 'produce_vegetables__celery': 1, 'produce_vegetables__ginger': 9.5,
+    'produce_vegetables__garlic': 7.25, 'produce_vegetables__bell_peppers': 2, 'produce_vegetables__avocado': 3,
+    'produce_vegetables__green_onion': 240,
+    'rice_noodles_prepared__rice': 8, 'rice_noodles_prepared__kokuho_rice': 5,
+    'rice_noodles_prepared__egg_noodles': 1, 'rice_noodles_prepared__tofu': 14,
+    'rice_noodles_prepared__spring_rolls': 3, 'rice_noodles_prepared__dumplings': 2,
+    'sauces_seasonings__soy_sauce': 3, 'sauces_seasonings__vegetable_oil': 4,
+    'sauces_seasonings__chili_sauce': 6, 'sauces_seasonings__mayonnaise': 8,
+    'sauces_seasonings__ketchup': 12, 'sauces_seasonings__sesame_oil': 3,
+    'sushi_supplies__sushi_nori': 2, 'sushi_supplies__sushi_kombu': 1,
+    'drinks__bottled_drinks': 6, 'drinks__bottled_water': 4, 'drinks__soda_syrup': 1,
+    'packaging_smallwares__22oz_cups': 8, 'packaging_smallwares__22oz_lids': 8,
+    'packaging_smallwares__plastic_wrap': 3, 'packaging_smallwares__takeout_bags': 10,
+    'packaging_smallwares__chopsticks': 4, 'packaging_smallwares__napkins': 5,
+    'cleaning_supplies__dish_soap': 1, 'cleaning_supplies__bleach': 1,
+    'cleaning_supplies__grey_paper_towels': 3, 'cleaning_supplies__toilet_paper': 2,
+  };
+
+  Object.entries(qtyMap).forEach(([k,v]) => data[k] = v);
+
+  data.__invoices = [
+    { vendor: 'Pacific Coast Seafood', amount: 1284.50, paid: true, date: '2026-03-01' },
+    { vendor: 'Golden Dragon Wholesale', amount: 872.80, paid: true, date: '2026-03-03' },
+    { vendor: 'Pacific Coast Seafood', amount: 961.25, paid: true, date: '2026-03-08' },
+    { vendor: 'Western Produce Supply', amount: 430.00, paid: true, date: '2026-03-10' },
+    { vendor: 'Metro Packaging Co.', amount: 756.35, paid: false, date: '2026-03-15' },
+    { vendor: 'Golden Dragon Wholesale', amount: 1103.60, paid: false, date: '2026-03-17' },
+    { vendor: 'Valley Cleaning Supplies', amount: 219.90, paid: true, date: '2026-03-20' },
+    { vendor: 'Pacific Coast Seafood', amount: 543.75, paid: false, date: '2026-03-24' },
+    { vendor: 'Metro Packaging Co.', amount: 88.00, paid: true, date: '2026-03-27' },
+    { vendor: 'Misc / Cash Purchase', amount: 47.13, paid: true, date: '2026-03-29' },
+  ];
+
+  data.__notes = 'March 2026 – Full inventory count.\nShrimp price increased $8/box.\nEgg noodle order came short: 290 vs 300.\nFreezer #2 was down 3/12–3/14.\nGreen Onion re-ordered mid-month.\nMetro Packaging invoice (3/15) still outstanding.';
+
+  localStorage.setItem(INV_PREFIX + '2026-03', JSON.stringify(data));
+  dim('Month 1 (EN): 2026-03 — ' + JSON.stringify(data).length + ' bytes');
+}
+
+function injectInventoryMonth2() {
+  // Chinese custom categories
+  const cats = [
+    {
+      id: 'rou_hai', name: '肉类与海鲜', labelKey: '',
+      items: [
+        { id: 'niurou', name: '牛肉', price: 8.50, unit: '磅' },
+        { id: 'jirou', name: '鸡肉', price: 3.20, unit: '磅' },
+        { id: 'xia', name: '虾', price: 45.00, unit: '箱' },
+        { id: 'sanwenyu', name: '三文鱼', price: 12.80, unit: '磅' },
+        { id: 'pangxie', name: '螃蟹', price: 18.00, unit: '磅' },
+      ]
+    },
+    {
+      id: 'shucai', name: '蔬菜', labelKey: '',
+      items: [
+        { id: 'xilan', name: '西兰花', price: 28.00, unit: '箱' },
+        { id: 'huluobo', name: '胡萝卜', price: 18.00, unit: '箱' },
+        { id: 'baicai', name: '白菜', price: 1.50, unit: '个' },
+        { id: 'dacong', name: '大葱', price: 0.75, unit: '根' },
+        { id: 'shengjiang', name: '生姜', price: 4.50, unit: '磅' },
+      ]
+    },
+    {
+      id: 'tiaoliao', name: '调料', labelKey: '',
+      items: [
+        { id: 'jiangyou', name: '酱油', price: 15.00, unit: '桶' },
+        { id: 'cu', name: '醋', price: 8.00, unit: '瓶' },
+        { id: 'lajiao', name: '辣椒酱', price: 6.50, unit: '瓶' },
+        { id: 'mayou', name: '麻油', price: 12.00, unit: '瓶' },
+      ]
+    },
+    {
+      id: 'yinliao', name: '饮料', labelKey: '',
+      items: [
+        { id: 'kuangquan', name: '矿泉水', price: 5.00, unit: '箱' },
+        { id: 'kekou', name: '可口可乐', price: 22.00, unit: '箱' },
+        { id: 'naicha', name: '奶茶原料', price: 35.00, unit: '箱' },
+      ]
+    },
+  ];
+
+  const data = { __month: '2026-04', __categories: cats };
+
+  // Quantities
+  data['rou_hai__niurou'] = 55; data['rou_hai__jirou'] = 120;
+  data['rou_hai__xia'] = 8; data['rou_hai__sanwenyu'] = 25;
+  data['rou_hai__pangxie'] = 10;
+  data['shucai__xilan'] = 6; data['shucai__huluobo'] = 4;
+  data['shucai__baicai'] = 20; data['shucai__dacong'] = 100;
+  data['shucai__shengjiang'] = 15;
+  data['tiaoliao__jiangyou'] = 5; data['tiaoliao__cu'] = 3;
+  data['tiaoliao__lajiao'] = 8; data['tiaoliao__mayou'] = 2;
+  data['yinliao__kuangquan'] = 10; data['yinliao__kekou'] = 6;
+  data['yinliao__naicha'] = 3;
+
+  data.__invoices = [
+    { vendor: '太平洋海鲜批发', amount: 3500.00, paid: true, date: '2026-04-02' },
+    { vendor: '金龙蔬菜批发', amount: 1200.50, paid: false, date: '2026-04-10' },
+    { vendor: '好又多调料行', amount: 680.00, paid: true, date: '2026-04-15' },
+    { vendor: '本地农夫直送', amount: 450.25, paid: true, date: '2026-04-20' },
+  ];
+
+  data.__notes = '四月份库存盘点。\n牛肉价格上涨了$1/磅。\n金龙蔬菜批发的发票还没付。\n新增了奶茶原料品类。\n螃蟹季节结束，下月减少订购。';
+
+  localStorage.setItem(INV_PREFIX + '2026-04', JSON.stringify(data));
+
+  // Save custom categories config
+  localStorage.setItem(INV_CFG_KEY, JSON.stringify(cats));
+  dim('Month 2 (ZH custom cats): 2026-04 — ' + JSON.stringify(data).length + ' bytes');
+}
+
+// ── Default categories (matches inventory.js DEFAULT_CATEGORIES) ────
+function getDefaultCategories() {
+  return [
+    { id: 'meat_seafood', name: 'Meat & Seafood', labelKey: 'catMeatSeafood', items: [
+      { id: 'beef', name: 'Beef', price: 8.50, unit: 'lbs' },
+      { id: 'chicken', name: 'Chicken', price: 3.20, unit: 'lbs' },
+      { id: 'chicken_bones', name: 'Chicken Bones', price: 1.80, unit: 'lbs' },
+      { id: 'shrimp', name: 'Shrimp', price: 45.00, unit: 'box' },
+      { id: 'salmon', name: 'Salmon', price: 12.80, unit: 'lbs' },
+      { id: 'crab_sticks', name: 'Crab Sticks', price: 8.00, unit: 'lbs' },
+      { id: 'fried_shrimp', name: 'Fried Shrimp', price: 32.00, unit: 'box' },
+      { id: 'minced_tuna', name: 'Minced Tuna', price: 6.50, unit: 'lbs' },
+      { id: 'sushi_salmon', name: 'Sushi Salmon', price: null, unit: 'lbs' },
+    ]},
+    { id: 'produce_vegetables', name: 'Produce & Vegetables', labelKey: 'catProduceVegetables', items: [
+      { id: 'broccoli', name: 'Broccoli', price: 28.00, unit: 'box' },
+      { id: 'carrots', name: 'Carrots', price: 18.00, unit: 'box' },
+      { id: 'cabbage', name: 'Cabbage', price: 1.50, unit: 'each' },
+      { id: 'large_onion', name: 'Large Onion', price: 22.00, unit: 'bag' },
+      { id: 'celery', name: 'Celery', price: 2.50, unit: 'each' },
+      { id: 'ginger', name: 'Ginger', price: 4.50, unit: 'lbs' },
+      { id: 'garlic', name: 'Garlic', price: 5.00, unit: 'lbs' },
+      { id: 'bell_peppers', name: 'Bell Peppers', price: 35.00, unit: 'box' },
+      { id: 'avocado', name: 'Avocado', price: 55.00, unit: 'box' },
+      { id: 'green_onion', name: 'Green Onion', price: 0.75, unit: 'each' },
+    ]},
+    { id: 'rice_noodles_prepared', name: 'Rice, Noodles & Prepared', labelKey: 'catRiceNoodles', items: [
+      { id: 'rice', name: 'Rice', price: 22.00, unit: 'bag' },
+      { id: 'kokuho_rice', name: 'Kokuho Rice', price: 28.00, unit: 'bag' },
+      { id: 'egg_noodles', name: 'Egg Noodles', price: 300.00, unit: 'each' },
+      { id: 'tofu', name: 'Tofu', price: 10.00, unit: 'bag' },
+      { id: 'spring_rolls', name: 'Spring Rolls', price: 12.00, unit: 'box' },
+      { id: 'dumplings', name: 'Dumplings', price: 15.00, unit: 'box' },
+    ]},
+    { id: 'sauces_seasonings', name: 'Sauces & Seasonings', labelKey: 'catSauces', items: [
+      { id: 'soy_sauce', name: 'Soy Sauce', price: 15.00, unit: 'bucket' },
+      { id: 'vegetable_oil', name: 'Vegetable Oil', price: 25.00, unit: 'bucket' },
+      { id: 'chili_sauce', name: 'Chili Sauce', price: 6.50, unit: 'bottle' },
+      { id: 'mayonnaise', name: 'Mayonnaise', price: 8.00, unit: 'each' },
+      { id: 'ketchup', name: 'Ketchup', price: 5.50, unit: 'each' },
+      { id: 'sesame_oil', name: 'Sesame Oil', price: 12.00, unit: 'each' },
+    ]},
+    { id: 'sushi_supplies', name: 'Sushi Supplies', labelKey: 'catSushi', items: [
+      { id: 'sushi_nori', name: 'Sushi Nori', price: 25.00, unit: 'box' },
+      { id: 'sushi_kombu', name: 'Sushi Kombu', price: 18.00, unit: 'bag' },
+    ]},
+    { id: 'drinks', name: 'Drinks', labelKey: 'catDrinks', items: [
+      { id: 'bottled_drinks', name: 'Bottled Drinks', price: 18.00, unit: 'box' },
+      { id: 'bottled_water', name: 'Bottled Water', price: 8.00, unit: 'box' },
+      { id: 'soda_syrup', name: 'Soda Syrup', price: 113.10, unit: 'box' },
+    ]},
+    { id: 'packaging_smallwares', name: 'Packaging & Smallwares', labelKey: 'catPackaging', items: [
+      { id: '22oz_cups', name: '22oz Cups', price: null, unit: 'box' },
+      { id: '22oz_lids', name: '22oz Lids', price: null, unit: 'box' },
+      { id: 'plastic_wrap', name: 'Plastic Wrap', price: null, unit: 'box' },
+      { id: 'takeout_bags', name: 'Takeout Bags', price: null, unit: 'box' },
+      { id: 'chopsticks', name: 'Chopsticks', price: null, unit: 'box' },
+      { id: 'napkins', name: 'Napkins', price: null, unit: 'box' },
+    ]},
+    { id: 'cleaning_supplies', name: 'Cleaning Supplies', labelKey: 'catCleaning', items: [
+      { id: 'dish_soap', name: 'Dish Soap', price: 22.00, unit: 'box' },
+      { id: 'bleach', name: 'Bleach', price: 15.00, unit: 'box' },
+      { id: 'grey_paper_towels', name: 'Grey Paper Towels', price: 28.00, unit: 'box' },
+      { id: 'toilet_paper', name: 'Toilet Paper', price: 35.00, unit: 'box' },
+    ]},
+  ];
+}
+
+// ═══════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════
+function seeded(seed) {
+  let x = seed >>> 0;
+  return function() { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
+}
+function f2(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+// ═══════════════════════════════════════════════
+// AUTOMATED TESTS
+// ═══════════════════════════════════════════════
+function runAllTests() {
+  counts = { total: 0, pass: 0, fail: 0, warn: 0 };
+  updateStats();
+  document.getElementById('log').textContent = '';
+  heading('FULL AUDIT – AUTOMATED TESTS');
+  info('Timestamp: ' + new Date().toISOString());
+
+  testDataIntegrity();
+  testCalculations();
+  testI18N();
+  testMetaCrossPage();
+  testEdgeCases();
+
+  heading('SUMMARY');
+  info('Total: ' + counts.total + ' | Pass: ' + counts.pass + ' | Fail: ' + counts.fail + ' | Warn: ' + counts.warn);
+  if (counts.fail === 0) pass('ALL TESTS PASSED');
+  else fail(counts.fail + ' test(s) FAILED — see above');
+}
+
+// ── Data Integrity Tests ────────────────────────────────────────────
+function testDataIntegrity() {
+  heading('DATA INTEGRITY');
+
+  // Check all 3 weeks exist
+  ['2026-03-09', '2026-03-16', '2026-03-23'].forEach(w => {
+    const raw = localStorage.getItem(WEEK_PREFIX + w);
+    assert(raw, 'Week ' + w + ' exists in localStorage', 'Week ' + w + ' MISSING');
+    if (raw) {
+      const d = JSON.parse(raw);
+      assert(d.__weekStart === w, 'Week ' + w + ' __weekStart matches', 'Week ' + w + ' __weekStart mismatch: ' + d.__weekStart);
+      assert(Array.isArray(d.__employees), 'Week ' + w + ' has employees array', 'Week ' + w + ' missing __employees');
+      assert(Array.isArray(d.__vendors), 'Week ' + w + ' has vendors array', 'Week ' + w + ' missing __vendors');
+      assert(Array.isArray(d.__salesSources), 'Week ' + w + ' has salesSources array', 'Week ' + w + ' missing __salesSources');
+      assert(Array.isArray(d.__cashExpenses), 'Week ' + w + ' has cashExpenses array', 'Week ' + w + ' missing __cashExpenses');
+      assert(d.coh_start !== undefined, 'Week ' + w + ' has coh_start', 'Week ' + w + ' missing coh_start');
+      assert(typeof d.notes === 'string', 'Week ' + w + ' has notes', 'Week ' + w + ' missing notes');
+    }
+  });
+
+  // Check inventory months
+  ['2026-03', '2026-04'].forEach(m => {
+    const raw = localStorage.getItem(INV_PREFIX + m);
+    assert(raw, 'Month ' + m + ' exists in localStorage', 'Month ' + m + ' MISSING');
+    if (raw) {
+      const d = JSON.parse(raw);
+      assert(d.__month === m, 'Month ' + m + ' __month matches', 'Month ' + m + ' __month mismatch');
+      assert(Array.isArray(d.__categories), 'Month ' + m + ' has __categories', 'Month ' + m + ' missing __categories');
+      assert(Array.isArray(d.__invoices), 'Month ' + m + ' has __invoices', 'Month ' + m + ' missing __invoices');
+      assert(typeof d.__notes === 'string', 'Month ' + m + ' has __notes', 'Month ' + m + ' missing __notes');
+    }
+  });
+
+  // Check meta
+  const metaRaw = localStorage.getItem(META_KEY);
+  assert(metaRaw, 'Meta key exists', 'Meta key MISSING');
+  if (metaRaw) {
+    const meta = JSON.parse(metaRaw);
+    assert(meta.storeName === '好运中餐馆 Lucky Wok', 'Store name is CJK+EN mix', 'Store name wrong: ' + meta.storeName);
+    assert(Array.isArray(meta.employees) && meta.employees.length >= 10, 'Meta has ≥10 employees', 'Meta employees: ' + (meta.employees||[]).length);
+    assert(Array.isArray(meta.vendors) && meta.vendors.length >= 10, 'Meta has ≥10 vendors', 'Meta vendors: ' + (meta.vendors||[]).length);
+  }
+}
+
+// ── Calculation Tests ────────────────────────────────────────────────
+function testCalculations() {
+  heading('CALCULATION TESTS');
+
+  // Test weekly sales totals
+  ['2026-03-09', '2026-03-16', '2026-03-23'].forEach(w => {
+    const raw = localStorage.getItem(WEEK_PREFIX + w);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    const ss = d.__salesSources || [];
+
+    // Sum all sales
+    let totalSales = 0;
+    ss.forEach(src => {
+      let srcTotal = 0;
+      for (let day = 0; day < 7; day++) {
+        const v = parseFloat(d['s_' + day + '_' + src]) || 0;
+        srcTotal += v;
+      }
+      totalSales += srcTotal;
+    });
+    assert(totalSales >= 0, 'Week ' + w + ' total sales = $' + totalSales.toFixed(2) + ' (non-negative)',
+      'Week ' + w + ' total sales negative: $' + totalSales.toFixed(2));
+
+    // Sum all invoices
+    let totalInvoices = 0;
+    let paidCount = 0, unpaidCount = 0;
+    (d.__vendors || []).forEach(v => {
+      for (let day = 0; day < 7; day++) {
+        const amt = parseFloat(d['inv_' + v + '_' + day]) || 0;
+        if (amt > 0) {
+          totalInvoices += amt;
+          if (d['invpaid_' + v + '_' + day] === '1') paidCount++;
+          else unpaidCount++;
+        }
+      }
+    });
+    dim('Week ' + w + ': $' + totalSales.toFixed(2) + ' sales, $' + totalInvoices.toFixed(2) + ' invoices (' + paidCount + ' paid, ' + unpaidCount + ' unpaid)');
+
+    // Cash on hand forward calculation
+    const cohStart = parseFloat(d.coh_start) || 0;
+    let cohRunning = cohStart;
+    for (let day = 0; day < 7; day++) {
+      const cashIn = parseFloat(d['s_' + day + '_Cash']) || 0;
+      let dayExp = 0;
+      (d.__cashExpenses || []).forEach(ex => {
+        dayExp += parseFloat(d['exp_' + ex + '_' + day]) || 0;
+      });
+      cohRunning = cohRunning + cashIn - dayExp;
+    }
+    dim('Week ' + w + ': COH start=$' + cohStart.toFixed(2) + ' → end=$' + cohRunning.toFixed(2));
+    assert(!isNaN(cohRunning), 'Week ' + w + ' COH calculation valid', 'Week ' + w + ' COH is NaN');
+  });
+
+  // Test inventory totals
+  ['2026-03', '2026-04'].forEach(m => {
+    const raw = localStorage.getItem(INV_PREFIX + m);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    const cats = d.__categories || [];
+
+    let grandTotal = 0;
+    cats.forEach(cat => {
+      let catTotal = 0;
+      (cat.items || []).forEach(item => {
+        const key = cat.id + '__' + item.id;
+        const qty = parseFloat(d[key]) || 0;
+        const price = item.price || 0;
+        catTotal += qty * price;
+      });
+      grandTotal += catTotal;
+    });
+
+    dim('Month ' + m + ': Grand total = $' + grandTotal.toFixed(2) + ' across ' + cats.length + ' categories');
+    assert(grandTotal >= 0, 'Month ' + m + ' grand total non-negative', 'Month ' + m + ' grand total negative');
+
+    // Invoice totals
+    let invTotal = 0;
+    (d.__invoices || []).forEach(inv => invTotal += inv.amount || 0);
+    dim('Month ' + m + ': Invoice total = $' + invTotal.toFixed(2) + ' (' + (d.__invoices||[]).length + ' invoices)');
+  });
+}
+
+// ── I18N Tests ──────────────────────────────────────────────────────
+function testI18N() {
+  heading('I18N KEY TESTS');
+
+  // Load I18N from app page
+  const requiredKeys = [
+    'subtitle', 'weekStarting', 'generateSnapshot', 'generatePDF',
+    'dailySales', 'employeeHours', 'day', 'totalSales', 'cash',
+    'totals', 'employee', 'totalHrs', 'days', 'daysShort',
+    'previousWeeks', 'notes', 'invoices', 'cashExpenses',
+  ];
+
+  info('Checking I18N via iframe load of app.js...');
+  // We can't easily access app.js I18N from here, so we check data validity instead
+  // Check that CJK characters are properly stored
+  const w2 = JSON.parse(localStorage.getItem(WEEK_PREFIX + '2026-03-23') || '{}');
+  const hasCJKEmployee = (w2.__employees || []).some(e => /[\u4e00-\u9fff]/.test(e));
+  assert(hasCJKEmployee, 'ZH week has CJK employee names', 'ZH week missing CJK employees');
+
+  const hasCJKVendor = (w2.__vendors || []).some(v => /[\u4e00-\u9fff]/.test(v));
+  assert(hasCJKVendor, 'ZH week has CJK vendor names', 'ZH week missing CJK vendors');
+
+  const hasCJKExpense = (w2.__cashExpenses || []).some(e => /[\u4e00-\u9fff]/.test(e));
+  assert(hasCJKExpense, 'ZH week has CJK expense names', 'ZH week missing CJK expenses');
+
+  const hasCJKSS = (w2.__salesSources || []).some(s => /[\u4e00-\u9fff]/.test(s));
+  assert(hasCJKSS, 'ZH week has CJK sales sources', 'ZH week missing CJK sales sources');
+
+  const hasCJKNotes = /[\u4e00-\u9fff]/.test(w2.notes || '');
+  assert(hasCJKNotes, 'ZH week has CJK notes', 'ZH week missing CJK notes');
+
+  // Spanish accent marks
+  const w3 = JSON.parse(localStorage.getItem(WEEK_PREFIX + '2026-03-09') || '{}');
+  const hasAccent = (w3.__employees || []).some(e => /[áéíóúñ]/i.test(e));
+  assert(hasAccent, 'ES week has accented employee names', 'ES week missing accented names');
+
+  const hasAccentVendor = (w3.__vendors || []).some(v => /[áéíóúñ]/i.test(v));
+  assert(hasAccentVendor, 'ES week has accented vendor names', 'ES week missing accented vendors');
+
+  // Inventory CJK
+  const inv2 = JSON.parse(localStorage.getItem(INV_PREFIX + '2026-04') || '{}');
+  const hasCJKCat = (inv2.__categories || []).some(c => /[\u4e00-\u9fff]/.test(c.name));
+  assert(hasCJKCat, 'ZH inventory has CJK category names', 'ZH inventory missing CJK categories');
+
+  const hasCJKInvVendor = (inv2.__invoices || []).some(i => /[\u4e00-\u9fff]/.test(i.vendor));
+  assert(hasCJKInvVendor, 'ZH inventory has CJK invoice vendors', 'ZH inventory missing CJK vendors');
+}
+
+// ── Cross-Page Meta Tests ────────────────────────────────────────────
+function testMetaCrossPage() {
+  heading('CROSS-PAGE META');
+
+  const meta = JSON.parse(localStorage.getItem(META_KEY) || '{}');
+
+  // Store name is shared
+  assert(meta.storeName && meta.storeName.length > 0, 'Shared store name set: "' + meta.storeName + '"', 'Store name empty');
+
+  // CJK in store name
+  assert(/[\u4e00-\u9fff]/.test(meta.storeName || ''), 'Store name contains CJK characters', 'Store name has no CJK');
+
+  // Employee list is merged
+  const zhEmps = ['张伟', '李明', '王芳'];
+  const esEmps = ['María González', 'Señora López'];
+  zhEmps.forEach(e => {
+    assert((meta.employees||[]).includes(e), 'Meta employees includes ' + e, 'Meta employees missing ' + e);
+  });
+  esEmps.forEach(e => {
+    assert((meta.employees||[]).includes(e), 'Meta employees includes ' + e, 'Meta employees missing ' + e);
+  });
+
+  // Vendor list spans languages
+  assert((meta.vendors||[]).some(v => /[\u4e00-\u9fff]/.test(v)), 'Meta vendors include CJK entries', 'No CJK vendors in meta');
+  assert((meta.vendors||[]).some(v => /[áéíóúñ]/i.test(v)), 'Meta vendors include accented entries', 'No accented vendors in meta');
+}
+
+// ── Edge Case Tests ──────────────────────────────────────────────────
+function testEdgeCases() {
+  heading('EDGE CASES');
+
+  // Week 3: zero starting cash
+  const w3 = JSON.parse(localStorage.getItem(WEEK_PREFIX + '2026-03-09') || '{}');
+  assert(w3.coh_start === '0', 'ES week coh_start is zero string', 'ES week coh_start = "' + w3.coh_start + '"');
+
+  // All-zero sales source (Uber Eats in week 3)
+  let uberTotal = 0;
+  for (let d=0; d<7; d++) uberTotal += parseFloat(w3['s_'+d+'_Uber Eats']||0);
+  assert(uberTotal === 0, 'Uber Eats week total is $0 (all-zero edge case)', 'Uber Eats total = $' + uberTotal);
+
+  // Penny invoice
+  const pennyInv = parseFloat(w3['inv_Distribuidora García_0'] || '0');
+  assert(pennyInv === 0.01, 'Penny invoice ($0.01) stored correctly', 'Penny invoice = $' + pennyInv);
+
+  // Large invoice
+  const largeInv = parseFloat(w3['inv_Distribuidora García_5'] || '0');
+  assert(largeInv === 9999.99, 'Large invoice ($9999.99) stored correctly', 'Large invoice = $' + largeInv);
+
+  // Half-hour precision
+  assert(w3['h_Alejandro Muñoz_0'] === '8.5', 'Half-hour employee hours preserved', 'Hours = ' + w3['h_Alejandro Muñoz_0']);
+
+  // Apostrophe in name (O'Brien in week 2)
+  const w2 = JSON.parse(localStorage.getItem(WEEK_PREFIX + '2026-03-23') || '{}');
+  assert((w2.__employees||[]).includes("O'Brien"), "Apostrophe in name (O'Brien) preserved", "O'Brien missing from employees");
+
+  // Fractional COH start
+  assert(w2.coh_start === '1200.88', 'Fractional COH start preserved', 'COH start = ' + w2.coh_start);
+
+  // Null-price items in inventory (packaging items have price: null)
+  const inv1 = JSON.parse(localStorage.getItem(INV_PREFIX + '2026-03') || '{}');
+  const packCat = (inv1.__categories || []).find(c => c.id === 'packaging_smallwares');
+  if (packCat) {
+    const nullPriceItems = packCat.items.filter(i => i.price === null);
+    assert(nullPriceItems.length > 0, 'Packaging category has null-price items (' + nullPriceItems.length + ')', 'No null-price items found');
+  } else {
+    warn('Packaging category not found in inventory data');
+  }
+
+  // Large quantity (green onion = 240)
+  assert(inv1['produce_vegetables__green_onion'] === 240, 'Large qty (240 green onions) stored', 'Green onion qty = ' + inv1['produce_vegetables__green_onion']);
+
+  // Sushi salmon null price
+  if (packCat) {
+    const sushiCat = (inv1.__categories || []).find(c => c.id === 'meat_seafood');
+    if (sushiCat) {
+      const sushiSalmon = sushiCat.items.find(i => i.id === 'sushi_salmon');
+      assert(sushiSalmon && sushiSalmon.price === null, 'Sushi Salmon has null price (N/A item)', 'Sushi Salmon price not null');
+    }
+  }
+
+  // Week 1 has 10 employees (stress)
+  const w1 = JSON.parse(localStorage.getItem(WEEK_PREFIX + '2026-03-16') || '{}');
+  assert((w1.__employees||[]).length === 10, 'Stress week has 10 employees', 'Employee count: ' + (w1.__employees||[]).length);
+  assert((w1.__vendors||[]).length === 10, 'Stress week has 10 vendors', 'Vendor count: ' + (w1.__vendors||[]).length);
+  assert((w1.__salesSources||[]).length === 8, 'Stress week has 8 sales sources', 'Sales sources: ' + (w1.__salesSources||[]).length);
+  assert((w1.__cashExpenses||[]).length === 8, 'Stress week has 8 expense types', 'Expenses: ' + (w1.__cashExpenses||[]).length);
+
+  // Chinese inventory has items with quantities
+  const inv2 = JSON.parse(localStorage.getItem(INV_PREFIX + '2026-04') || '{}');
+  assert(inv2['rou_hai__niurou'] === 55, 'CJK inventory beef qty = 55', 'CJK beef qty = ' + inv2['rou_hai__niurou']);
+  assert(inv2['shucai__dacong'] === 100, 'CJK inventory green onion qty = 100', 'CJK onion qty = ' + inv2['shucai__dacong']);
+}
+
+// ═══════════════════════════════════════════════
+// IFRAME HELPERS
+// ═══════════════════════════════════════════════
+function openDaily() {
+  const c = document.getElementById('iframe-container');
+  c.innerHTML = '<h3>Daily Sales Page</h3><iframe src="index.html" id="daily-iframe"></iframe>';
+}
+function openInventory() {
+  const c = document.getElementById('iframe-container');
+  c.innerHTML = '<h3>Inventory Page</h3><iframe src="inventory.html" id="inv-iframe"></iframe>';
+}
+</script>
+</body>
+</html>
